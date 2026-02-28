@@ -53,6 +53,52 @@
   }
 }
 
+/* Animated circulating border ------------------------------------------------ */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-rotate {
+  to { --border-angle: 360deg; }
+}
+
+.card-animated-border {
+  position: relative;
+  padding: 1px;
+  border-radius: 1rem; /* matches rounded-2xl */
+  /* default subtle border via background */
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.card-animated-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 0%,
+    transparent 30%,
+    #1d4ed8 45%,
+    #2563eb 50%,
+    #22d3ee 55%,
+    #f1f5f9 59%,
+    #3b82f6 63%,
+    transparent 72%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.card-animated-border:hover::before {
+  opacity: 1;
+  animation: border-rotate 2.8s linear infinite;
+}
+/* --------------------------------------------------------------------------- */
+
 @layer base {
   * {
     @apply border-border;

@@ -38,6 +38,9 @@ begin
   if not exists (select 1 from pg_type where typname = 'interview_session_status') then
     create type interview_session_status as enum ('active', 'completed', 'abandoned', 'cancelled');
   end if;
+  if not exists (select 1 from pg_type where typname = 'stage_session_status') then
+    create type stage_session_status as enum ('not_started', 'running', 'completed', 'abandoned');
+  end if;
   if not exists (select 1 from pg_type where typname = 'employer_role') then
     create type employer_role as enum ('admin', 'recruiter', 'hiring_manager');
   end if;
@@ -225,6 +228,13 @@ create table if not exists public.job_applications (
   job_profile_id uuid not null references public.job_profiles (id) on delete cascade,
   status application_status not null default 'applied',
   current_stage_index integer,
+  fit_score numeric,
+  fit_decision text,
+  recommendation text,
+  resume_text text,
+  resume_url text,
+  matched_skills text[] default '{}'::text[],
+  missing_skills text[] default '{}'::text[],
   invited_at timestamptz,
   applied_at timestamptz,
   rejected_at timestamptz,
@@ -236,6 +246,13 @@ create table if not exists public.job_applications (
 );
 
 alter table public.job_applications add column if not exists user_id uuid references public.users (id) on delete cascade;
+alter table public.job_applications add column if not exists fit_score numeric;
+alter table public.job_applications add column if not exists fit_decision text;
+alter table public.job_applications add column if not exists recommendation text;
+alter table public.job_applications add column if not exists resume_text text;
+alter table public.job_applications add column if not exists resume_url text;
+alter table public.job_applications add column if not exists matched_skills text[] default '{}'::text[];
+alter table public.job_applications add column if not exists missing_skills text[] default '{}'::text[];
 
 create index if not exists job_applications_user_id_idx on public.job_applications (user_id);
 create index if not exists job_applications_job_profile_id_idx on public.job_applications (job_profile_id);
@@ -332,7 +349,8 @@ create index if not exists focus_events_job_profile_idx
 
 create table if not exists public.interview_sessions (
   id uuid primary key default gen_random_uuid(),
-  candidate_id uuid not null references public.candidates (id) on delete cascade,
+  candidate_id uuid references public.candidates (id) on delete cascade,
+  user_id uuid references public.users (id) on delete set null,
   job_profile_id uuid not null references public.job_profiles (id) on delete cascade,
   application_id uuid references public.job_applications (id) on delete set null,
   current_stage_index integer,
@@ -346,12 +364,108 @@ create table if not exists public.interview_sessions (
 
 alter table public.interview_sessions
   add column if not exists application_id uuid references public.job_applications (id) on delete set null;
+alter table public.interview_sessions
+  add column if not exists user_id uuid references public.users (id) on delete set null;
+alter table public.interview_sessions alter column candidate_id drop not null;
 
 create index if not exists interview_sessions_candidate_idx
   on public.interview_sessions (candidate_id);
 
 create index if not exists interview_sessions_job_profile_idx
   on public.interview_sessions (job_profile_id);
+
+create index if not exists interview_sessions_application_idx
+  on public.interview_sessions (application_id);
+
+create index if not exists interview_sessions_user_id_idx
+  on public.interview_sessions (user_id);
+
+-- =========================
+-- Stage sessions & artifacts (runtime, UML-aligned)
+-- =========================
+
+create table if not exists public.stage_sessions (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.interview_sessions (id) on delete cascade,
+  job_stage_id uuid not null references public.job_stages (id) on delete cascade,
+  status stage_session_status not null default 'not_started',
+  current_question_index integer,
+  score numeric,
+  ai_collaboration_score numeric,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists stage_sessions_session_idx
+  on public.stage_sessions (session_id);
+
+create index if not exists stage_sessions_job_stage_idx
+  on public.stage_sessions (job_stage_id);
+
+create table if not exists public.question_responses (
+  id uuid primary key default gen_random_uuid(),
+  stage_session_id uuid not null references public.stage_sessions (id) on delete cascade,
+  question_index integer,
+  question_text text not null,
+  interviewer_audio_url text,
+  transcript_text text,
+  candidate_audio_url text,
+  score numeric,
+  followup boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists question_responses_stage_session_idx
+  on public.question_responses (stage_session_id);
+
+create table if not exists public.code_submissions (
+  id uuid primary key default gen_random_uuid(),
+  stage_session_id uuid not null references public.stage_sessions (id) on delete cascade,
+  language text,
+  code_text text,
+  run_output text,
+  tests_output text,
+  explanation_transcript text,
+  score numeric,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists code_submissions_stage_session_idx
+  on public.code_submissions (stage_session_id);
+
+create table if not exists public.case_submissions (
+  id uuid primary key default gen_random_uuid(),
+  stage_session_id uuid not null references public.stage_sessions (id) on delete cascade,
+  response_transcript text,
+  score numeric,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists case_submissions_stage_session_idx
+  on public.case_submissions (stage_session_id);
+
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid not null references public.job_applications (id) on delete cascade,
+  overall_score numeric,
+  recommendation text,
+  report_json jsonb,
+  human_readable_report text,
+  generated_at timestamptz not null default now(),
+  unique (application_id)
+);
+
+create index if not exists reports_application_idx
+  on public.reports (application_id);
+
+-- Bridge existing logs to stage_sessions (keeps legacy columns too)
+alter table public.focus_events
+  add column if not exists stage_session_id uuid references public.stage_sessions (id) on delete set null;
+
+alter table public.tool_usage_logs
+  add column if not exists stage_session_id uuid references public.stage_sessions (id) on delete set null;
 
 -- =========================
 -- Tools & scoring

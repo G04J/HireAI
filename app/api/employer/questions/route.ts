@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
-import { getEmployerIdForRequest } from '@/lib/employer-default';
+import { getEmployerIdForRequest } from '@/server/employer';
 
 export async function GET(req: NextRequest) {
   try {

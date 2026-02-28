@@ -21,7 +21,10 @@ export default async function Home() {
         </Link>
         <nav className="ml-auto flex items-center gap-6">
           {user && (
-            <Link href="/candidate" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            <Link
+              href={`/candidate/${user.id}`}
+              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            >
               My applications
             </Link>
           )}

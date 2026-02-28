@@ -18,6 +18,8 @@ export async function POST() {
   const email = user.email ?? '';
   const fullName = (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? email.split('@')[0];
   const role = (user.user_metadata?.role as 'employer' | 'candidate') ?? 'candidate';
+  const phone = (user.user_metadata?.phone as string) ?? null;
+  const profileSummary = (user.user_metadata?.profile_summary as string) ?? null;
 
   await supabase.from('users').upsert(
     {
@@ -25,6 +27,8 @@ export async function POST() {
       email,
       full_name: fullName || null,
       avatar_url: user.user_metadata?.avatar_url ?? null,
+      phone: phone || null,
+      profile_summary: profileSummary || null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'id' }
@@ -37,6 +41,7 @@ export async function POST() {
 
   if (role === 'employer') {
     const companyName = (user.user_metadata?.company_name as string) ?? 'My Company';
+    const employerRole = (user.user_metadata?.employer_role as 'admin' | 'recruiter' | 'hiring_manager') ?? 'admin';
     const { data: existing } = await supabase
       .from('employer_profiles')
       .select('id')
@@ -47,6 +52,7 @@ export async function POST() {
       await supabase.from('employer_profiles').insert({
         user_id: user.id,
         company_name: companyName,
+        role: employerRole,
       });
     }
   }
@@ -58,5 +64,23 @@ export async function POST() {
   const roleList = (roles?.map((r) => r.role) ?? [role]) as ('employer' | 'candidate')[];
   const primaryRole = roleList.includes('employer') ? 'employer' : 'candidate';
 
-  return NextResponse.json({ role: primaryRole, roles: roleList });
+  // Fetch the employer profile id so the client can build the correct URL.
+  let employerId: string | null = null;
+  if (primaryRole === 'employer') {
+    const { data: ep } = await supabase
+      .from('employer_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    employerId = ep?.id ?? null;
+  }
+
+  return NextResponse.json({
+    role: primaryRole,
+    roles: roleList,
+    // candidateId is just the auth user id
+    candidateId: primaryRole === 'candidate' ? user.id : null,
+    employerId,
+  });
 }

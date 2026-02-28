@@ -1,0 +1,109 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createAuthClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabaseClient';
+import { generateEvaluationReport, type GenerateEvaluationReportInput } from '@/ai/flows/generate-evaluation-report-flow';
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> }
+) {
+  try {
+    const { sessionId } = await params;
+    const auth = await createAuthClient();
+    const { data: { user }, error: authError } = await auth.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const stageResults = body?.stageResults ?? [];
+    const candidateData = body?.candidateData ?? null;
+    const resumeFitCheckResult = body?.resumeFitCheckResult ?? null;
+
+    const supabase = createServerSupabaseClient();
+    const { data: session, error: sessionError } = await supabase
+      .from('interview_sessions')
+      .select('id, user_id, application_id, job_profile_id, status')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (sessionError || !session?.id) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+    if (session.user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!session.application_id) {
+      return NextResponse.json({ error: 'Session is not linked to an application' }, { status: 400 });
+    }
+
+    const { data: job } = await supabase
+      .from('job_profiles')
+      .select('id, title, company_name, description, seniority, must_have_skills')
+      .eq('id', session.job_profile_id)
+      .single();
+
+    const { data: stages } = await supabase
+      .from('job_stages')
+      .select('id, type, ai_usage_policy')
+      .eq('job_profile_id', session.job_profile_id)
+      .order('index', { ascending: true });
+
+    const jobProfile: GenerateEvaluationReportInput['jobProfile'] = {
+      title: job?.title ?? 'Job',
+      company: job?.company_name ?? 'Company',
+      description: job?.description ?? '',
+      seniority: job?.seniority ?? '',
+      mustHaveSkills: job?.must_have_skills ?? [],
+      interviewPipelineConfig: (stages ?? []).map((s) => ({
+        stageId: s.id,
+        stageType: s.type,
+        focusAreas: ['Technical', 'Communication'],
+        aiAllowed: s.ai_usage_policy !== 'not_allowed',
+      })),
+    };
+
+    const userEmail = user.email ?? '';
+    const input: GenerateEvaluationReportInput = {
+      jobProfile,
+      candidateData: {
+        name: candidateData?.name ?? (user.user_metadata?.full_name as string | undefined) ?? userEmail.split('@')[0] ?? 'Candidate',
+        email: candidateData?.email ?? userEmail,
+        education: candidateData?.education ?? '',
+        experienceSummary: candidateData?.experienceSummary ?? '',
+        resumeText: candidateData?.resumeText ?? '',
+      },
+      resumeFitCheckResult: {
+        fitScore: resumeFitCheckResult?.fitScore ?? 0,
+        matchedSkills: resumeFitCheckResult?.matchedSkills ?? [],
+        missingSkills: resumeFitCheckResult?.missingSkills ?? [],
+        justification: resumeFitCheckResult?.justification ?? '',
+      },
+      stageResults,
+    };
+
+    const report = await generateEvaluationReport(input);
+
+    const now = new Date().toISOString();
+    await Promise.all([
+      supabase.from('interview_sessions').update({ status: 'completed', last_activity_at: now }).eq('id', sessionId),
+      supabase.from('job_applications').update({ status: 'completed', updated_at: now }).eq('id', session.application_id),
+      supabase.from('reports').upsert(
+        {
+          application_id: session.application_id,
+          overall_score: null,
+          recommendation: report.hiringRecommendation,
+          report_json: report as unknown as Record<string, unknown>,
+          human_readable_report: report.humanReadableReport,
+          generated_at: now,
+        },
+        { onConflict: 'application_id' }
+      ),
+    ]);
+
+    return NextResponse.json({ success: true, recommendation: report.hiringRecommendation });
+  } catch (err) {
+    console.error('POST /api/sessions/[sessionId]/complete', err);
+    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
+  }
+}
+

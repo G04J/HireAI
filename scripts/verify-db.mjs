@@ -83,12 +83,12 @@ async function main() {
 
   console.log('  All required tables exist and are readable.\n');
 
-  // Optional: check candidates (schema only alters it)
-  const { error: candError } = await supabase.from('candidates').select('id').limit(1);
-  if (candError && (candError.message?.includes('relation') || candError.code === 'PGRST204')) {
-    console.log('⚠️  Table "candidates" not found. Create it if you use candidate features.');
-  } else if (!candError) {
-    console.log('  Table "candidates" exists.');
+  // Optional: check reports (used by employer review)
+  const { error: reportError } = await supabase.from('reports').select('id').limit(1);
+  if (reportError && (reportError.message?.includes('relation') || reportError.code === 'PGRST204')) {
+    console.log('⚠️  Table "reports" not found. Run supabase-schema.sql to enable report generation.');
+  } else if (!reportError) {
+    console.log('  Table "reports" exists.');
   }
 
   console.log('\n✅ Database is correctly set up.');

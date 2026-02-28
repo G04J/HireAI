@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
-import { getEmployerIdForRequest } from '@/lib/employer-default';
+import { getEmployerIdForRequest } from '@/server/employer';
+import { buildStageRow } from '@/server/jobs/mappers';
 
 export async function GET() {
   try {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
       title,
       companyName,
       location,
+      category,
       description,
       seniority,
       mustHaveSkills,
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
       title,
       company_name: companyName,
       location: location ?? null,
+      category: category ?? null,
       description,
       seniority,
       must_have_skills: Array.isArray(mustHaveSkills) ? mustHaveSkills : [],
@@ -110,18 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     const stageRows = Array.isArray(stages)
-      ? stages.map((s: any, index: number) => ({
-          job_profile_id: profile.id,
-          index,
-          type: mapStageType(s.type),
-          duration_minutes: s.durationMinutes ?? s.duration_minutes ?? null,
-          ai_usage_policy: mapAiPolicy(s.aiAllowed, s.ai_usage_policy),
-          proctoring_policy: mapProctoring(s.proctoring_policy),
-          competencies: s.competencies ?? s.focusAreas ?? null,
-          stage_weights: s.stage_weights ?? null,
-          interviewer_voice_id: s.interviewer_voice_id ?? s.voicePreset ?? s.voice ?? null,
-          question_source: mapQuestionSource(s.question_source),
-        }))
+      ? stages.map((s: any, index: number) => buildStageRow(s, index, profile.id))
       : [];
 
     if (stageRows.length > 0) {
@@ -143,28 +135,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function mapStageType(t: string): 'behavioral' | 'coding' | 'case' | 'leadership' {
-  const v = (t || '').toLowerCase();
-  if (v.includes('behavioral') || v.includes('culture')) return 'behavioral';
-  if (v.includes('cod') || v.includes('technical')) return 'coding';
-  if (v.includes('case')) return 'case';
-  if (v.includes('leadership')) return 'leadership';
-  return 'behavioral';
-}
-
-function mapAiPolicy(aiAllowed: boolean | undefined, policy: string | undefined): 'allowed' | 'not_allowed' | 'limited' {
-  if (policy === 'not_allowed' || policy === 'limited') return policy;
-  return aiAllowed ? 'allowed' : 'not_allowed';
-}
-
-function mapProctoring(p: string | undefined): 'relaxed' | 'moderate' | 'strict' | 'exam' {
-  const v = (p || 'relaxed').toLowerCase();
-  if (['moderate', 'strict', 'exam'].includes(v)) return v as any;
-  return 'relaxed';
-}
-
-function mapQuestionSource(s: string | undefined): 'employer_only' | 'hybrid' | 'ai_only' {
-  const v = (s || 'employer_only').toLowerCase();
-  if (v === 'hybrid' || v === 'ai_only') return v;
-  return 'employer_only';
-}

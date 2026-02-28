@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
+import { createClient as createAuthClient } from '@/lib/supabase/server';
 
-// Create a candidate at application time
+// Back-compat: candidate application now maps to job_applications (per-user)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -11,67 +12,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const auth = await createAuthClient();
+    const { data: { user }, error: authError } = await auth.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = createServerSupabaseClient();
 
+    const now = new Date().toISOString();
     const { data, error } = await supabase
-      .from('candidates')
-      .insert({
-        job_id: jobId,
-        name: formData.name,
-        email: formData.email,
-        education: formData.education ?? null,
-        experience_summary: formData.experience ?? null,
-        resume_text: formData.resumeText ?? null,
-        status: 'applied',
-        fit_score: fitResult?.fitScore ?? null,
-        fit_justification: fitResult?.justification ?? null,
-        matched_skills: fitResult?.matchedSkills ?? [],
-        missing_skills: fitResult?.missingSkills ?? [],
-      })
+      .from('job_applications')
+      .upsert(
+        {
+          user_id: user.id,
+          job_profile_id: jobId,
+          status: 'applied',
+          current_stage_index: 0,
+          applied_at: now,
+          updated_at: now,
+          resume_text: formData?.resumeText ?? null,
+          fit_score: fitResult?.fitScore ?? null,
+          fit_decision: typeof fitResult?.fitScore === 'number'
+            ? (fitResult.fitScore >= 70 ? 'eligible' : fitResult.fitScore >= 40 ? 'borderline' : 'ineligible')
+            : null,
+          matched_skills: fitResult?.matchedSkills ?? [],
+          missing_skills: fitResult?.missingSkills ?? [],
+        },
+        { onConflict: 'user_id,job_profile_id' }
+      )
       .select('id')
       .single();
 
     if (error) {
-      console.error('Error creating candidate', error);
-      return NextResponse.json({ error: 'Failed to create candidate' }, { status: 500 });
+      console.error('Error creating application (legacy /api/candidates)', error);
+      return NextResponse.json({ error: 'Failed to create application' }, { status: 500 });
     }
 
-    return NextResponse.json({ candidateId: data.id });
+    // Preserve old key for older clients, but prefer applicationId.
+    return NextResponse.json({ applicationId: data.id, candidateId: data.id });
   } catch (err) {
     console.error('Unexpected error in POST /api/candidates', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
   }
 }
 
-// Update candidate with final interview results
+// Deprecated: completion should go through /api/sessions/[sessionId]/complete
 export async function PATCH(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { candidateId, stageResults, status } = body;
-
-    if (!candidateId) {
-      return NextResponse.json({ error: 'candidateId is required' }, { status: 400 });
-    }
-
-    const supabase = createServerSupabaseClient();
-    const { error } = await supabase
-      .from('candidates')
-      .update({
-        stage_results: stageResults ?? null,
-        status: status ?? 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', candidateId);
-
-    if (error) {
-      console.error('Error updating candidate', error);
-      return NextResponse.json({ error: 'Failed to update candidate' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Unexpected error in PATCH /api/candidates', err);
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
-  }
+  void req;
+  return NextResponse.json(
+    { error: 'Deprecated. Use /api/sessions/[sessionId]/complete.' },
+    { status: 410 }
+  );
 }
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Briefcase, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +19,9 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [employerRole, setEmployerRole] = useState<'admin' | 'recruiter' | 'hiring_manager'>('admin');
   const [role, setRole] = useState<Role>('candidate');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,9 @@ export default function SignUpPage() {
         data: {
           full_name: fullName || email.split('@')[0],
           role,
+          phone: phone || undefined,
           company_name: role === 'employer' ? companyName || 'My Company' : undefined,
+          employer_role: role === 'employer' ? employerRole : undefined,
         },
       },
     });
@@ -57,9 +62,15 @@ export default function SignUpPage() {
       setError('Account created but could not complete setup. Try signing in.');
       return;
     }
-    const { role: syncedRole } = await res.json();
+    const { role: syncedRole, employerId, candidateId } = await res.json();
     setLoading(false);
-    router.push(syncedRole === 'employer' ? '/employer' : '/candidate');
+    if (syncedRole === 'employer' && employerId) {
+      router.push(`/employer/${employerId}`);
+    } else if (syncedRole === 'candidate' && candidateId) {
+      router.push(`/candidate/${candidateId}`);
+    } else {
+      router.push('/');
+    }
     router.refresh();
   }
 
@@ -122,17 +133,43 @@ export default function SignUpPage() {
               autoComplete="name"
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone (optional)</Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="+1 555 000 0000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+            />
+          </div>
           {role === 'employer' && (
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company name</Label>
-              <Input
-                id="companyName"
-                type="text"
-                placeholder="Acme Inc."
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company name</Label>
+                <Input
+                  id="companyName"
+                  type="text"
+                  placeholder="Acme Inc."
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employerRole">Your role at company</Label>
+                <Select value={employerRole} onValueChange={(v: 'admin' | 'recruiter' | 'hiring_manager') => setEmployerRole(v)}>
+                  <SelectTrigger id="employerRole">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="recruiter">Recruiter</SelectItem>
+                    <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

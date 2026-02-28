@@ -44,9 +44,18 @@ function LoginForm() {
       setError('Could not load your profile.');
       return;
     }
-    const { role } = await res.json();
+    const { role, employerId, candidateId } = await res.json();
     setLoading(false);
-    const redirectTo = next || (role === 'employer' ? '/employer' : '/candidate');
+    let redirectTo = next;
+    if (!redirectTo) {
+      if (role === 'employer' && employerId) {
+        redirectTo = `/employer/${employerId}`;
+      } else if (role === 'candidate' && candidateId) {
+        redirectTo = `/candidate/${candidateId}`;
+      } else {
+        redirectTo = '/';
+      }
+    }
     router.push(redirectTo);
     router.refresh();
   }

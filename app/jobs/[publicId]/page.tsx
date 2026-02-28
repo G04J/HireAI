@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { createClient as createAuthClient } from '@/lib/supabase/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,6 +91,12 @@ export default async function PublicJobPage({ params }: { params: Params }) {
   }
 
   await recordView(job.id, publicId);
+
+  const auth = await createAuthClient();
+  const { data: { user } } = await auth.auth.getUser();
+  const applyHref = user
+    ? `/candidate/${user.id}/${job.id}`
+    : `/login?next=/candidate/jobs`;
 
   const skills = job.must_have_skills ?? [];
 
@@ -206,8 +213,8 @@ export default async function PublicJobPage({ params }: { params: Params }) {
                   className="px-10 h-12 text-lg font-bold gap-2 shadow-lg shadow-primary/20"
                   asChild
                 >
-                  <Link href={`/candidate/${job.id}/apply`}>
-                    Start application <ArrowRight className="w-5 h-5" />
+                  <Link href={applyHref}>
+                    {user ? 'Start application' : 'Sign in to apply'} <ArrowRight className="w-5 h-5" />
                   </Link>
                 </Button>
               </CardFooter>
@@ -262,8 +269,8 @@ export default async function PublicJobPage({ params }: { params: Params }) {
               </CardContent>
               <CardFooter className="pt-4 border-t px-6 flex flex-col gap-3">
                 <Button size="lg" className="w-full gap-2" asChild>
-                  <Link href={`/candidate/${job.id}/apply`}>
-                    Start application <ArrowRight className="w-5 h-5" />
+                  <Link href={applyHref}>
+                    {user ? 'Start application' : 'Sign in to apply'} <ArrowRight className="w-5 h-5" />
                   </Link>
                 </Button>
               </CardFooter>

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
-import { getDefaultEmployerId } from '@/lib/employer-default';
+import { getEmployerIdForRequest } from '@/lib/employer-default';
 
 export async function GET(req: NextRequest) {
   try {
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { searchParams } = new URL(req.url);
     const jobProfileId = searchParams.get('job_profile_id') ?? searchParams.get('jobProfileId');
     const jobStageId = searchParams.get('job_stage_id') ?? searchParams.get('jobStageId');
@@ -35,7 +36,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
 
     const {
@@ -86,7 +88,8 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
 
     const { id, question_text, questionText, category, difficulty, mandatory } = body;
@@ -133,7 +136,8 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 

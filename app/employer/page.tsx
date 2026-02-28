@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Plus, MoreVertical, Users, Briefcase, ExternalLink, FileText } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { AuthNav } from '@/components/auth-nav';
+import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
-import { getDefaultEmployerId } from '@/lib/employer-default';
+import { getEmployerIdForRequest } from '@/lib/employer-default';
 
-async function getJobs() {
+async function getJobs(employerId: string) {
   try {
-    const employerId = await getDefaultEmployerId();
     const supabase = createServerSupabaseClient();
     const { data: profiles, error } = await supabase
       .from('job_profiles')
@@ -45,7 +47,11 @@ async function getJobs() {
 }
 
 export default async function EmployerDashboard() {
-  const jobs = await getJobs();
+  const employerId = await getEmployerIdForRequest();
+  if (!employerId) redirect('/login?next=/employer');
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const jobs = await getJobs(employerId);
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
@@ -55,10 +61,8 @@ export default async function EmployerDashboard() {
           <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
-          <Button variant="ghost" size="sm">Help</Button>
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-            JD
-          </div>
+          <Button variant="ghost" size="sm" asChild><Link href="/employer">Dashboard</Link></Button>
+          <AuthNav user={user} />
         </div>
       </header>
 

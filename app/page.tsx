@@ -2,8 +2,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Shield, Users, Zap, BarChart3, ChevronRight, Briefcase } from 'lucide-react';
 import Image from 'next/image';
+import { createClient } from '@/lib/supabase/server';
+import { AuthNav } from '@/components/auth-nav';
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="px-6 h-20 flex items-center border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -17,9 +22,16 @@ export default function Home() {
           <Link href="/employer" className="text-sm font-medium hover:text-primary transition-colors">
             For Employers
           </Link>
-          <Button asChild>
-            <Link href="/employer/jobs/new">Post a Job</Link>
-          </Button>
+          {user ? (
+            <Button asChild>
+              <Link href="/employer/jobs/new">Post a Job</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link href="/login">Post a Job</Link>
+            </Button>
+          )}
+          <AuthNav user={user} />
         </nav>
       </header>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
-import { getDefaultEmployerId } from '@/lib/employer-default';
+import { getEmployerIdForRequest } from '@/lib/employer-default';
 import {
   buildPostingPayload,
   postToLinkedIn,
@@ -22,7 +22,8 @@ function getApplyBaseUrl(req: NextRequest): string {
 export async function GET(_req: NextRequest, { params }: { params: Params }) {
   try {
     const { jobId } = await params;
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = createServerSupabaseClient();
 
     const { data: profile, error: profileError } = await supabase
@@ -76,7 +77,8 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
 export async function POST(req: NextRequest, { params }: { params: Params }) {
   try {
     const { jobId } = await params;
-    const employerId = await getDefaultEmployerId();
+    const employerId = await getEmployerIdForRequest();
+    if (!employerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const linkedin = Boolean(body.linkedin);
     const seek = Boolean(body.seek);

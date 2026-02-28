@@ -1,14 +1,29 @@
 /**
- * Resolves the effective employer_id for API routes when auth is not yet implemented.
- * Uses DEFAULT_EMPLOYER_ID from env, or the first employer profile in DB, or creates one
- * (user + employer_profile + employer role).
+ * Resolves the effective employer_id for API routes.
+ * When userId is provided (auth), returns that user's employer_profile id or null.
+ * When no userId (e.g. no auth), uses DEFAULT_EMPLOYER_ID env, or first in DB, or creates default.
  */
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
+import { createClient as createAuthClient } from '@/lib/supabase/server';
 
 const DEFAULT_EMAIL = 'employer@aegishire.demo';
 const DEFAULT_COMPANY = 'AegisHire Demo';
 
-export async function getDefaultEmployerId(): Promise<string> {
+/**
+ * Returns employer_id for the current request: auth user's employer profile if logged in,
+ * otherwise fallback (env / first in DB / default). Returns null if user is logged in but has no employer profile.
+ */
+export async function getEmployerIdForRequest(): Promise<string | null> {
+  const auth = await createAuthClient();
+  const { data: { user } } = await auth.auth.getUser();
+  if (user) {
+    const id = await getDefaultEmployerId(user.id);
+    return id;
+  }
+  return getDefaultEmployerId();
+}
+
+export async function getDefaultEmployerId(userId?: string): Promise<string | null> {
   const envId = process.env.DEFAULT_EMPLOYER_ID;
   if (envId) return envId;
 
@@ -19,6 +34,16 @@ export async function getDefaultEmployerId(): Promise<string> {
     throw new Error(
       'Supabase server client failed. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local (Project Settings → API in Supabase).'
     );
+  }
+
+  if (userId) {
+    const { data: profile } = await supabase
+      .from('employer_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    return profile?.id ?? null;
   }
 
   const { data: existing, error: selectError } = await supabase
@@ -75,4 +100,10 @@ export async function getDefaultEmployerId(): Promise<string> {
     );
   }
   return profile.id;
+}
+
+export async function requireEmployerId(): Promise<string> {
+  const id = await getEmployerIdForRequest();
+  if (id) return id;
+  throw new Error('UNAUTHORIZED'); // Caller can check message and return 401
 }

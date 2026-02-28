@@ -59,7 +59,7 @@ export default function SignUpPage() {
     }
     const { role: syncedRole } = await res.json();
     setLoading(false);
-    router.push(syncedRole === 'employer' ? '/employer' : '/');
+    router.push(syncedRole === 'employer' ? '/employer' : '/candidate');
     router.refresh();
   }
 

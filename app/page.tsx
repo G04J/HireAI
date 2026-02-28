@@ -19,6 +19,11 @@ export default async function Home() {
           <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
         </Link>
         <nav className="ml-auto flex items-center gap-6">
+          {user && (
+            <Link href="/candidate" className="text-sm font-medium hover:text-primary transition-colors">
+              My applications
+            </Link>
+          )}
           <Link href="/employer" className="text-sm font-medium hover:text-primary transition-colors">
             For Employers
           </Link>

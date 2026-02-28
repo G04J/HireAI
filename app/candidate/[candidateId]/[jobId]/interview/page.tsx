@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
+import { useMicrophone } from '@/hooks/use-microphone';
+import { useCamera } from '@/hooks/use-camera';
 import {
   Shield,
-  ArrowRight,
   CheckCircle2,
   Loader2,
   AlertCircle,
-  Zap,
-  ChevronRight,
+  Mic,
+  MicOff,
+  Phone,
+  User,
+  Video,
+  VideoOff,
+  Send,
+  RotateCcw,
 } from 'lucide-react';
 
 type Stage = {
@@ -41,13 +45,39 @@ type StageState = {
 };
 
 type InterviewStatus = 'loading' | 'active' | 'finishing' | 'completed' | 'error';
+type SpeechState = 'idle' | 'loading' | 'speaking' | 'done';
 
 const STAGE_TYPE_LABELS: Record<string, string> = {
-  behavioral: 'Behavioral Q&A',
-  coding: 'Technical Coding',
-  case: 'Case Simulation',
+  behavioral: 'Behavioral',
+  coding: 'Technical',
+  case: 'Case Study',
   leadership: 'Leadership',
 };
+
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function AudioWaveform({ isActive }: { isActive: boolean }) {
+  return (
+    <div className="flex items-center justify-center gap-1 h-8">
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 bg-green-400 rounded-full transition-all duration-150 ${
+            isActive ? 'animate-pulse' : ''
+          }`}
+          style={{
+            height: isActive ? `${12 + Math.random() * 20}px` : '4px',
+            animationDelay: `${i * 0.1}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function InterviewPage({
   params,
@@ -64,18 +94,99 @@ export default function InterviewPage({
   const [status, setStatus] = useState<InterviewStatus>('loading');
   const [error, setError] = useState<string | null>(null);
 
-  // Job + all stages loaded from DB
   const [job, setJob] = useState<any>(null);
   const [allStages, setAllStages] = useState<Stage[]>([]);
 
-  // Per-stage state
   const [stageStates, setStageStates] = useState<StageState[]>([]);
   const [currentStageIdx, setCurrentStageIdx] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [currentAnswer, setCurrentAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Load job + stages on mount ─────────────────────────────────────────
+  const [speechState, setSpeechState] = useState<SpeechState>('idle');
+  const [transcript, setTranscript] = useState<string>('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mic = useMicrophone();
+  const camera = useCamera();
+
+  useEffect(() => {
+    camera.startCamera();
+    return () => camera.stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const speakQuestion = useCallback(async (text: string) => {
+    setSpeechState('loading');
+    try {
+      const res = await fetch('/api/ai/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        console.error('TTS failed:', res.status);
+        setSpeechState('done');
+        return;
+      }
+
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.onended = () => {
+          setSpeechState('done');
+          URL.revokeObjectURL(audioUrl);
+        };
+        audioRef.current.onerror = () => {
+          setSpeechState('done');
+          URL.revokeObjectURL(audioUrl);
+        };
+        setSpeechState('speaking');
+        audioRef.current.play().catch(() => setSpeechState('done'));
+      }
+    } catch (err) {
+      console.error('TTS error:', err);
+      setSpeechState('done');
+    }
+  }, []);
+
+  const transcribeAudio = useCallback(async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      const res = await fetch('/api/ai/speech-to-text', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTranscript(data.transcript || '');
+      } else {
+        console.error('STT failed:', res.status);
+        setTranscript('[Transcription failed]');
+      }
+    } catch (err) {
+      console.error('STT error:', err);
+      setTranscript('[Transcription error]');
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mic.state === 'stopped' && mic.audioBlob) {
+      transcribeAudio(mic.audioBlob);
+    }
+  }, [mic.state, mic.audioBlob, transcribeAudio]);
+
   useEffect(() => {
     if (!sessionId || !applicationId) {
       setError('Missing session information. Please go back and try again.');
@@ -105,8 +216,6 @@ export default function InterviewPage({
           return;
         }
 
-        // Init first stage (sessionId already has a stageSession created by /session/start)
-        // We need the stageSessionId for stage 0 — fetch from the session
         const sessionRes = await fetch(`/api/sessions/${sessionId}`, { credentials: 'same-origin' });
         let firstStageSessionId = '';
         if (sessionRes.ok) {
@@ -114,7 +223,6 @@ export default function InterviewPage({
           firstStageSessionId = sJson.stageSessionId ?? '';
         }
 
-        // Generate questions for stage 0
         const firstStage = stagesData[0];
         const questions = await loadQuestions(firstStage, jobData);
 
@@ -139,6 +247,15 @@ export default function InterviewPage({
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, applicationId, jobId]);
+
+  const currentState = stageStates[currentStageIdx];
+  const question = currentState?.questions[currentQuestionIdx];
+
+  useEffect(() => {
+    if (status === 'active' && question && speechState === 'idle') {
+      speakQuestion(question.question);
+    }
+  }, [status, question, speechState, speakQuestion]);
 
   async function loadQuestions(stage: Stage, jobData: any): Promise<Question[]> {
     try {
@@ -165,27 +282,25 @@ export default function InterviewPage({
     }
   }
 
-  // ── Submit current answer ──────────────────────────────────────────────
   const submitAnswer = async () => {
-    if (!currentAnswer.trim() || submitting) return;
+    if (!transcript.trim() || submitting) return;
     setSubmitting(true);
 
-    const currentState = stageStates[currentStageIdx];
-    if (!currentState) { setSubmitting(false); return; }
+    const currentStateLocal = stageStates[currentStageIdx];
+    if (!currentStateLocal) { setSubmitting(false); return; }
 
-    const question = currentState.questions[currentQuestionIdx];
+    const questionLocal = currentStateLocal.questions[currentQuestionIdx];
 
     try {
-      // 1. Save question record
       let questionResponseId: string | null = null;
-      if (currentState.stageSessionId) {
+      if (currentStateLocal.stageSessionId) {
         const qRes = await fetch(
-          `/api/sessions/${sessionId}/stages/${currentState.stageSessionId}/question`,
+          `/api/sessions/${sessionId}/stages/${currentStateLocal.stageSessionId}/question`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ questionText: question.question, questionIndex: currentQuestionIdx }),
+            body: JSON.stringify({ questionText: questionLocal.question, questionIndex: currentQuestionIdx }),
           }
         );
         if (qRes.ok) {
@@ -194,7 +309,6 @@ export default function InterviewPage({
         }
       }
 
-      // 2. Score the answer with AI
       let score = 0;
       try {
         if (job) {
@@ -209,8 +323,8 @@ export default function InterviewPage({
                 mustHaveSkills: job.must_have_skills ?? [],
               },
               stageConfig: {
-                stageType: currentState.stage.type ?? 'behavioral',
-                focusAreas: currentState.stage.competencies ?? [currentState.stage.type],
+                stageType: currentStateLocal.stage.type ?? 'behavioral',
+                focusAreas: currentStateLocal.stage.competencies ?? [currentStateLocal.stage.type],
                 aiAllowed: false,
                 scoringRubric: {
                   weights: { quality: 0.5, relevance: 0.3, clarity: 0.2 },
@@ -218,8 +332,8 @@ export default function InterviewPage({
                   passThreshold: 60,
                 },
               },
-              question: question.question,
-              answer: currentAnswer,
+              question: questionLocal.question,
+              answer: transcript,
             }),
           });
           if (scoreRes.ok) {
@@ -231,42 +345,40 @@ export default function InterviewPage({
         console.warn('Scoring failed, defaulting to 0', scoreErr);
       }
 
-      // 3. Save answer
-      if (questionResponseId && currentState.stageSessionId) {
+      if (questionResponseId && currentStateLocal.stageSessionId) {
         await fetch(
-          `/api/sessions/${sessionId}/stages/${currentState.stageSessionId}/answer`,
+          `/api/sessions/${sessionId}/stages/${currentStateLocal.stageSessionId}/answer`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({
               questionResponseId,
-              transcriptText: currentAnswer,
+              transcriptText: transcript,
               score,
             }),
           }
         );
       }
 
-      // 4. Update local state
       const updatedStages = [...stageStates];
       updatedStages[currentStageIdx] = {
-        ...currentState,
-        answers: [...currentState.answers, currentAnswer],
-        scores: [...currentState.scores, score],
+        ...currentStateLocal,
+        answers: [...currentStateLocal.answers, transcript],
+        scores: [...currentStateLocal.scores, score],
       };
       setStageStates(updatedStages);
-      setCurrentAnswer('');
+      setTranscript('');
+      mic.resetRecording();
+      setSpeechState('idle');
 
-      const isLastQuestion = currentQuestionIdx >= currentState.questions.length - 1;
+      const isLastQuestion = currentQuestionIdx >= currentStateLocal.questions.length - 1;
       const isLastStage = currentStageIdx >= allStages.length - 1;
 
       if (isLastQuestion) {
         if (isLastStage) {
-          // All done — complete the interview
           await finishInterview(updatedStages);
         } else {
-          // Advance to next stage
           await advanceToNextStage(updatedStages);
         }
       } else {
@@ -279,13 +391,11 @@ export default function InterviewPage({
     }
   };
 
-  // ── Advance to next stage ──────────────────────────────────────────────
   const advanceToNextStage = async (updatedStageStates: StageState[]) => {
     const nextIdx = currentStageIdx + 1;
     const nextStageData = allStages[nextIdx];
     if (!nextStageData) return;
 
-    // Show loading state for next stage
     const nextState: StageState = {
       stage: nextStageData,
       stageSessionId: '',
@@ -299,7 +409,6 @@ export default function InterviewPage({
     setCurrentQuestionIdx(0);
 
     try {
-      // Create next stage_session
       const nextRes = await fetch(`/api/sessions/${sessionId}/stages/next`, {
         method: 'POST',
         credentials: 'same-origin',
@@ -311,7 +420,6 @@ export default function InterviewPage({
         nextStageSessionId = nJson.stageSessionId ?? '';
       }
 
-      // Generate questions for the next stage
       const questions = await loadQuestions(nextStageData, job);
 
       const finalStageStates = [...updatedStageStates, {
@@ -326,7 +434,6 @@ export default function InterviewPage({
     }
   };
 
-  // ── Finish interview ───────────────────────────────────────────────────
   const finishInterview = async (finalStageStates: StageState[]) => {
     setStatus('finishing');
     try {
@@ -352,7 +459,6 @@ export default function InterviewPage({
       }, 1500);
     } catch (e) {
       console.error('Failed to complete interview', e);
-      // Even if completion fails, navigate to completed page
       setStatus('completed');
       setTimeout(() => {
         router.push(`/candidate/${candidateId}/${jobId}/completed`);
@@ -360,32 +466,73 @@ export default function InterviewPage({
     }
   };
 
-  // ── Derived values ─────────────────────────────────────────────────────
-  const currentState = stageStates[currentStageIdx];
   const totalQuestions = allStages.length * 3;
-  const answeredQuestions = stageStates.reduce((sum, ss) => sum + ss.answers.length, 0) + currentQuestionIdx;
+  const answeredQuestions = stageStates.reduce((sum, ss) => sum + ss.answers.length, 0);
   const progressPct = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  const handleMicToggle = () => {
+    if (mic.state === 'recording') {
+      mic.stopRecording();
+    } else {
+      mic.startRecording();
+    }
+  };
+
+  const handleReRecord = () => {
+    setTranscript('');
+    mic.resetRecording();
+  };
+
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+
+  const [abandoning, setAbandoning] = useState(false);
+
+  const handleEndCall = async () => {
+    setAbandoning(true);
+    camera.stopCamera();
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/abandon`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (res.ok) {
+        setShowEndConfirmation(false);
+        router.push(`/candidate/${candidateId}/${jobId}/completed`);
+      } else {
+        setError('Failed to save your progress. Please try again.');
+      }
+    } catch (e) {
+      console.error('Abandon error', e);
+      setError('Failed to save your progress. Please try again.');
+    } finally {
+      setAbandoning(false);
+    }
+  };
+
+  const [layoutRatio, setLayoutRatio] = useState(50);
+
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full text-center p-8">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Could not load interview</h2>
-          <p className="text-muted-foreground mb-6">{error}</p>
-          <Button asChild><Link href={`/candidate/${candidateId}/${jobId}`}>Go back</Link></Button>
-        </Card>
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center p-8 bg-zinc-800 rounded-2xl border border-zinc-700">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Could not load interview</h2>
+          <p className="text-zinc-400 mb-6">{error}</p>
+          <Button variant="outline" asChild className="border-zinc-600 bg-transparent text-white hover:bg-zinc-700">
+            <Link href={`/candidate/${candidateId}/${jobId}`}>Go back</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (status === 'loading' || !currentState) {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="font-medium">Preparing your interview…</p>
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-green-400" />
+          <p className="font-medium text-white">Joining interview...</p>
+          <p className="text-sm text-zinc-400">Setting up your connection</p>
         </div>
       </div>
     );
@@ -393,11 +540,11 @@ export default function InterviewPage({
 
   if (status === 'finishing') {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="font-medium">Generating your evaluation report…</p>
-          <p className="text-sm text-muted-foreground">This only takes a moment.</p>
+          <Loader2 className="w-10 h-10 animate-spin text-green-400" />
+          <p className="font-medium text-white">Generating your evaluation...</p>
+          <p className="text-sm text-zinc-400">Please wait while we analyze your responses</p>
         </div>
       </div>
     );
@@ -405,150 +552,301 @@ export default function InterviewPage({
 
   if (status === 'completed') {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">
-          <CheckCircle2 className="w-12 h-12 text-green-500" />
-          <h2 className="text-2xl font-bold">Interview complete!</h2>
-          <p className="text-muted-foreground">Redirecting to your results…</p>
+          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Interview Complete</h2>
+          <p className="text-zinc-400">Redirecting to your results...</p>
         </div>
       </div>
     );
   }
 
-  const question = currentState.questions[currentQuestionIdx];
   const isLoadingQuestions = currentState.status === 'loading_questions' || !question;
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col">
-      {/* Header */}
-      <header className="px-6 h-14 flex items-center border-b bg-white shrink-0 sticky top-0 z-50 gap-6">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 shrink-0">
-          <Shield className="w-5 h-5 text-primary" />
-          <span className="font-bold text-primary">AegisHire</span>
-        </Link>
-        <div className="flex-1">
-          <Progress value={progressPct} className="h-2" />
+    <div className="min-h-screen bg-zinc-900 flex flex-col">
+      <audio ref={audioRef} className="hidden" />
+      
+      {/* Header Bar */}
+      <header className="px-4 h-14 flex items-center justify-between bg-zinc-800/80 backdrop-blur-sm border-b border-zinc-700 shrink-0">
+        <div className="flex items-center gap-3">
+          <Shield className="w-5 h-5 text-green-400" />
+          <span className="font-semibold text-white">AegisHire Interview</span>
         </div>
-        <span className="text-sm text-muted-foreground shrink-0">{progressPct}% complete</span>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {allStages.map((stage, i) => (
+              <div
+                key={stage.id}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i < currentStageIdx
+                    ? 'bg-green-400'
+                    : i === currentStageIdx
+                    ? 'bg-green-400 ring-2 ring-green-400/30'
+                    : 'bg-zinc-600'
+                }`}
+              />
+            ))}
+          </div>
+          <Badge variant="outline" className="border-zinc-600 text-zinc-300 text-xs">
+            Stage {currentStageIdx + 1}/{allStages.length} • {STAGE_TYPE_LABELS[currentState.stage.type] ?? currentState.stage.type}
+          </Badge>
+          <Badge variant="outline" className="border-zinc-600 text-zinc-300 text-xs">
+            Q{currentQuestionIdx + 1}/{currentState.questions.length}
+          </Badge>
+        </div>
+
+        <div className="w-20" /> {/* Spacer for balance */}
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full p-6 lg:p-10">
-        {/* Stage indicator */}
-        <div className="flex items-center gap-2 mb-8 flex-wrap">
-          {allStages.map((stage, i) => (
-            <div key={stage.id} className="flex items-center gap-2">
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                  i < currentStageIdx
-                    ? 'bg-primary text-white border-primary'
-                    : i === currentStageIdx
-                    ? 'bg-primary/10 text-primary border-primary/30'
-                    : 'bg-white text-muted-foreground border-muted'
-                }`}
-              >
-                {i < currentStageIdx ? <CheckCircle2 className="w-3 h-3" /> : null}
-                Stage {i + 1}: {STAGE_TYPE_LABELS[stage.type] ?? stage.type}
-              </div>
-              {i < allStages.length - 1 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+      {/* Main Video Grid - Equal split with draggable divider */}
+      <main className="flex-1 p-4 flex flex-col lg:flex-row gap-4 overflow-hidden">
+        {/* AI Interviewer Tile */}
+        <div className="flex flex-col" style={{ flex: `${layoutRatio} 0 0%` }}>
+          <div className={`flex-1 bg-zinc-800 rounded-2xl border ${speechState === 'speaking' ? 'border-green-500/50' : 'border-zinc-700'} overflow-hidden relative flex flex-col items-center justify-center min-h-[200px] transition-all`}>
+            {/* Camera off avatar */}
+            <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-4 ${speechState === 'speaking' ? 'ring-4 ring-green-400/50 animate-pulse' : ''}`}>
+              <span className="text-3xl font-bold text-white">SR</span>
             </div>
-          ))}
-        </div>
-
-        {isLoadingQuestions ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <p>Generating questions for this stage…</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Question card */}
-            <Card className="border-2 border-primary/10 shadow-md overflow-hidden">
-              <div className="h-1 bg-primary" />
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {STAGE_TYPE_LABELS[currentState.stage.type] ?? currentState.stage.type}
-                    </Badge>
-                    <Badge variant="outline" className="capitalize">
-                      {question.difficulty}
-                    </Badge>
-                  </div>
-                  <span className="text-sm text-muted-foreground shrink-0">
-                    Question {currentQuestionIdx + 1} of {currentState.questions.length}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-xl font-semibold leading-relaxed">{question.question}</p>
-              </CardContent>
-            </Card>
-
-            {/* Previous Q&A in this stage */}
-            {currentState.answers.length > 0 && (
-              <div className="space-y-3">
-                {currentState.answers.map((ans, i) => (
-                  <div key={i} className="p-4 rounded-xl bg-white border text-sm space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                      Q{i + 1}: {currentState.questions[i]?.question}
-                    </p>
-                    <p className="text-muted-foreground">{ans}</p>
-                    {currentState.scores[i] !== undefined && (
-                      <Badge variant={currentState.scores[i] >= 70 ? 'default' : currentState.scores[i] >= 40 ? 'secondary' : 'destructive'}>
-                        Score: {currentState.scores[i]}/100
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+            
+            <h3 className="text-lg font-semibold text-white mb-1">Sarah Reynolds</h3>
+            <p className="text-sm text-zinc-400 mb-4">AI Interviewer</p>
+            
+            {/* Audio indicator */}
+            <AudioWaveform isActive={speechState === 'speaking'} />
+            
+            {/* Speaking indicator */}
+            {speechState === 'speaking' && (
+              <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-full">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-xs text-zinc-300">Speaking</span>
+              </div>
+            )}
+            
+            {speechState === 'loading' && (
+              <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-full">
+                <Loader2 className="w-3 h-3 text-zinc-400 animate-spin" />
+                <span className="text-xs text-zinc-300">Preparing...</span>
               </div>
             )}
 
-            {/* Answer input */}
-            <Card>
-              <CardContent className="pt-6 pb-2">
-                <Textarea
-                  placeholder="Type your answer here…"
-                  className="min-h-[180px] resize-none text-base leading-relaxed"
-                  value={currentAnswer}
-                  onChange={(e) => setCurrentAnswer(e.target.value)}
-                  disabled={submitting}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      submitAnswer();
-                    }
-                  }}
-                />
-              </CardContent>
-              <CardFooter className="flex items-center justify-between pt-2 pb-6 px-6">
-                <p className="text-xs text-muted-foreground">
-                  <Zap className="w-3 h-3 inline mr-1 text-accent" />
-                  Press ⌘+Enter to submit
+            {/* Video Off indicator */}
+            <div className="absolute top-4 right-4 flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-full">
+              <VideoOff className="w-3 h-3 text-zinc-400" />
+              <span className="text-xs text-zinc-400">Camera off</span>
+            </div>
+          </div>
+          
+          {/* Question Caption */}
+          {!isLoadingQuestions && question && (
+            <div className="mt-4 bg-zinc-800/60 backdrop-blur-sm rounded-xl p-4 border border-zinc-700">
+              <p className="text-white text-center text-lg leading-relaxed">
+                "{question.question}"
+              </p>
+            </div>
+          )}
+          
+          {isLoadingQuestions && (
+            <div className="mt-4 bg-zinc-800/60 backdrop-blur-sm rounded-xl p-4 border border-zinc-700 flex items-center justify-center gap-3">
+              <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />
+              <p className="text-zinc-400">Preparing next question...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Draggable Divider */}
+        <div
+          className="hidden lg:flex w-2 cursor-col-resize group items-center justify-center"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startRatio = layoutRatio;
+            const container = e.currentTarget.parentElement;
+            if (!container) return;
+            const containerWidth = container.getBoundingClientRect().width;
+
+            const handleMouseMove = (moveEvent: MouseEvent) => {
+              const deltaX = moveEvent.clientX - startX;
+              const deltaPercent = (deltaX / containerWidth) * 100;
+              const newRatio = Math.min(80, Math.max(20, startRatio + deltaPercent));
+              setLayoutRatio(newRatio);
+            };
+
+            const handleMouseUp = () => {
+              document.removeEventListener('mousemove', handleMouseMove);
+              document.removeEventListener('mouseup', handleMouseUp);
+            };
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+          }}
+        >
+          <div className="w-1 h-16 bg-zinc-600 rounded-full group-hover:bg-zinc-500 transition-colors" />
+        </div>
+
+        {/* Candidate Video Tile */}
+        <div className="flex flex-col" style={{ flex: `${100 - layoutRatio} 0 0%` }}>
+          <div className="flex-1 bg-zinc-800 rounded-2xl border border-zinc-700 overflow-hidden relative min-h-[200px]">
+            <video
+              ref={camera.videoRef as React.RefObject<HTMLVideoElement>}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover scale-x-[-1]"
+            />
+            
+            {camera.state !== 'active' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-800">
+                <User className="w-12 h-12 text-zinc-500 mb-2" />
+                <p className="text-sm text-zinc-400">
+                  {camera.state === 'requesting' ? 'Requesting camera...' : 'Camera unavailable'}
                 </p>
-                <Button
-                  onClick={submitAnswer}
-                  disabled={!currentAnswer.trim() || submitting}
-                  className="gap-2 min-w-[140px]"
+              </div>
+            )}
+            
+            <div className="absolute bottom-3 left-3 bg-zinc-900/80 px-3 py-1 rounded-full">
+              <span className="text-xs text-white font-medium">You</span>
+            </div>
+            
+            {mic.state === 'recording' && (
+              <div className="absolute top-3 left-3 flex items-center gap-2 bg-red-500/90 px-2 py-1 rounded-full">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                <span className="text-xs text-white font-medium">{formatDuration(mic.duration)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Control Bar */}
+      <footer className="px-4 py-4 bg-zinc-800/80 backdrop-blur-sm border-t border-zinc-700">
+        <div className="max-w-2xl mx-auto flex items-center justify-center gap-3">
+          {/* Camera Toggle */}
+          <button
+            onClick={() => camera.state === 'active' ? camera.stopCamera() : camera.startCamera()}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              camera.state === 'active'
+                ? 'bg-zinc-700 hover:bg-zinc-600 text-white'
+                : 'bg-red-500 hover:bg-red-600 text-white'
+            }`}
+            title={camera.state === 'active' ? 'Turn off camera' : 'Turn on camera'}
+          >
+            {camera.state === 'active' ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+          </button>
+
+          {/* Mic Toggle */}
+          <button
+            onClick={handleMicToggle}
+            disabled={mic.state === 'requesting' || isTranscribing || submitting || speechState === 'speaking'}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              mic.state === 'recording'
+                ? 'bg-red-500 hover:bg-red-600 ring-4 ring-red-500/30 animate-pulse'
+                : 'bg-zinc-700 hover:bg-zinc-600'
+            } disabled:opacity-50 disabled:cursor-not-allowed text-white`}
+            title={mic.state === 'recording' ? 'Stop recording' : 'Start recording'}
+          >
+            {mic.state === 'recording' ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+          </button>
+
+          {/* Re-record - only show when there's a transcript */}
+          {transcript && !isTranscribing && (
+            <button
+              onClick={handleReRecord}
+              disabled={submitting}
+              className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white disabled:opacity-50 transition-all"
+              title="Re-record answer"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* Submit */}
+          <Button
+            onClick={submitAnswer}
+            disabled={!transcript.trim() || submitting || isTranscribing}
+            className="h-12 px-6 bg-green-600 hover:bg-green-500 text-white rounded-full disabled:opacity-50"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : currentQuestionIdx >= currentState.questions.length - 1 && currentStageIdx >= allStages.length - 1 ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Finish Interview
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Next
+              </>
+            )}
+          </Button>
+
+          {/* End Call */}
+          <button
+            onClick={() => setShowEndConfirmation(true)}
+            className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-all"
+            title="End interview"
+          >
+            <Phone className="w-5 h-5 rotate-[135deg]" />
+          </button>
+        </div>
+
+        {/* Status hint */}
+        <p className="text-center text-xs text-zinc-500 mt-3">
+          {mic.state === 'idle' && speechState === 'done' && !transcript && 'Click the microphone to record your answer'}
+          {mic.state === 'recording' && `Recording: ${formatDuration(mic.duration)}`}
+          {mic.state === 'stopped' && isTranscribing && 'Processing your response...'}
+          {speechState === 'speaking' && 'Interviewer is speaking...'}
+          {transcript && !submitting && !isTranscribing && 'Click Next to continue'}
+        </p>
+      </footer>
+
+      {/* End Call Confirmation Dialog */}
+      {showEndConfirmation && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-zinc-800 rounded-2xl border border-zinc-700 p-6 max-w-sm w-full mx-4 shadow-xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+                <Phone className="w-7 h-7 text-red-400 rotate-[135deg]" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">End Interview?</h3>
+              <p className="text-sm text-zinc-400 mb-6">
+                Leaving now will end your interview permanently. You cannot rejoin. You will be evaluated only on the questions you have completed.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowEndConfirmation(false)}
+                  disabled={abandoning}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white font-medium transition-colors disabled:opacity-50"
                 >
-                  {submitting ? (
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEndCall}
+                  disabled={abandoning}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {abandoning ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-                    </>
-                  ) : currentQuestionIdx >= currentState.questions.length - 1 &&
-                    currentStageIdx >= allStages.length - 1 ? (
-                    <>
-                      Finish <CheckCircle2 className="w-4 h-4" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving…
                     </>
                   ) : (
-                    <>
-                      Next <ArrowRight className="w-4 h-4" />
-                    </>
+                    'End Interview'
                   )}
-                </Button>
-              </CardFooter>
-            </Card>
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,11 @@
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import {mistral} from 'genkitx-mistral';
 
 export const ai = genkit({
-  plugins: [googleAI()],
-  // Use a current model (gemini-1.5-flash 404s on v1beta; 2.5-flash is supported by the plugin)
-  model: 'googleai/gemini-2.5-flash',
+  plugins: [
+    mistral({
+      apiKey: process.env.MISTRAL_API_KEY,
+    }),
+  ],
+  model: 'mistral/mistral-small',
 });

@@ -63,44 +63,44 @@ export default async function CandidateJobBoard() {
       })(), applicationsByJobId: {} as Record<string, any> };
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/20">
-      <header className="px-6 h-16 flex items-center border-b bg-white">
-        <Link href="/" className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
+    <div className="flex flex-col min-h-screen bg-slate-950 text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
+            <Shield className="w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={userId ? `/candidate/${userId}` : '/login'}>
-              My applications
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/jobBoard">Job board</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/employer">For employers</Link>
-          </Button>
+          <Link href={userId ? `/candidate/${userId}` : '/login'} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            My applications
+          </Link>
+          <Link href="/candidate/jobs" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            Job board
+          </Link>
+          <Link href="/employer" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            For employers
+          </Link>
           <AuthNav user={user} />
         </div>
       </header>
 
       <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Job board</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-white">Job board</h1>
+          <p className="text-slate-400 mt-1">
             Browse all active roles you can apply to.
           </p>
         </div>
 
-        <Card>
+        <Card className="bg-slate-900/60 border-white/10">
           <CardHeader>
-            <CardTitle>Open roles</CardTitle>
-            <CardDescription>Roles published by employers on AegisHire.</CardDescription>
+            <CardTitle className="text-white">Open roles</CardTitle>
+            <CardDescription className="text-slate-400">Roles published by employers on AegisHire.</CardDescription>
           </CardHeader>
           <CardContent>
             {jobs.length === 0 ? (
-              <div className="py-10 text-sm text-muted-foreground text-center">
+              <div className="py-10 text-sm text-slate-400 text-center">
                 No published jobs are available yet. Check back soon.
               </div>
             ) : (
@@ -110,21 +110,21 @@ export default async function CandidateJobBoard() {
                   const hasApplied = Boolean(app);
                   const canContinue =
                     app &&
-                    ['applied', 'screening', 'in_interview'].includes(app.status);
+                    ['screening', 'in_interview'].includes(app.status);
 
                   return (
                     <div
                       key={job.id}
-                      className="border rounded-lg bg-white p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="border border-white/10 rounded-lg bg-slate-800/40 p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="font-semibold text-lg">{job.title}</h2>
-                          <Badge variant="outline" className="text-xs">
+                          <h2 className="font-semibold text-lg text-white">{job.title}</h2>
+                          <Badge variant="outline" className="text-xs border-white/20 text-slate-300">
                             {job.category || 'General'}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Building2 className="w-3 h-3" /> {job.company_name}
                           </span>
@@ -146,22 +146,30 @@ export default async function CandidateJobBoard() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {userId ? (
-                          <>
-                            <Button variant={hasApplied ? 'outline' : 'default'} size="sm" asChild>
-                              <Link href={`/candidate/${userId}/${job.id}`}>
-                                {hasApplied ? 'View application' : 'Apply'}
-                              </Link>
-                            </Button>
-                            {canContinue && (
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={`/candidate/${userId}/${job.id}/interview`}>
-                                  Continue <ArrowRight className="w-4 h-4 ml-1" />
-                                </Link>
-                              </Button>
-                            )}
-                          </>
+                          <Button
+                            variant={hasApplied ? 'outline' : 'default'}
+                            size="sm"
+                            asChild
+                            className={
+                              canContinue
+                                ? 'bg-blue-600 hover:bg-blue-500 text-white border-0'
+                                : hasApplied
+                                ? 'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white border-0'
+                            }
+                          >
+                            <Link href={`/candidate/${userId}/${job.id}`}>
+                              {canContinue ? (
+                                <>Continue <ArrowRight className="w-4 h-4 ml-1" /></>
+                              ) : hasApplied ? (
+                                'View application'
+                              ) : (
+                                'Apply'
+                              )}
+                            </Link>
+                          </Button>
                         ) : (
-                          <Button size="sm" asChild>
+                          <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0">
                             <Link href={`/login?next=/candidate/jobs`}>
                               Sign in to apply
                             </Link>

@@ -31,15 +31,9 @@ export default async function Home() {
           <Link href="/employer" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
             For Employers
           </Link>
-          {user ? (
-            <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
-              <Link href="/employer/jobs/new">Post a Job</Link>
-            </Button>
-          ) : (
-            <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:text-white">
-              <Link href="/login">Post a Job</Link>
-            </Button>
-          )}
+          <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
+            <Link href="/candidate/jobs">Browse Jobs</Link>
+          </Button>
           <AuthNav user={user} />
         </nav>
       </header>
@@ -81,15 +75,15 @@ export default async function Home() {
               </p>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <div className="flex flex-col items-center gap-3 pt-2">
                 <Button size="lg" className="h-14 px-10 text-lg bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-2xl shadow-blue-600/40 font-semibold" asChild>
-                  <Link href="/employer/jobs/new">
-                    Create Pipeline <ChevronRight className="ml-2 w-5 h-5" />
+                  <Link href="/candidate/jobs">
+                    Browse Jobs <ChevronRight className="ml-2 w-5 h-5" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="h-14 px-10 text-lg border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" asChild>
-                  <Link href="/employer">View Dashboard</Link>
-                </Button>
+                <p className="text-sm text-slate-500">
+                  No sign-in required to browse. Sign in when you&apos;re ready to apply.
+                </p>
               </div>
 
               {/* Stats row */}
@@ -262,25 +256,22 @@ export default async function Home() {
               Built for Modern Hiring Teams
             </div>
             <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tight leading-tight">
-              Ready to Transform Your Hiring?
+              Find Your Next Role
             </h2>
             <p className="text-blue-100 text-xl mb-10 leading-relaxed">
-              Create your first AI-powered interview pipeline in under 5 minutes. No credit card required.
+              Browse open roles, apply with one click. Sign in when you&apos;re ready to submit your application.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="h-14 px-10 text-xl bg-white text-blue-700 hover:bg-blue-50 shadow-2xl font-bold border-0" asChild>
-                <Link href="/employer/jobs/new">
-                  Get Started Free <ChevronRight className="ml-2 w-6 h-6" />
+                <Link href="/candidate/jobs">
+                  Browse Jobs <ChevronRight className="ml-2 w-6 h-6" />
                 </Link>
-              </Button>
-              <Button size="lg" variant="outline" className="h-14 px-10 text-xl border-white/40 text-white hover:bg-white/10 hover:text-white bg-transparent" asChild>
-                <Link href="/employer">View Demo</Link>
               </Button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mt-10 text-blue-200 text-sm">
-              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Free to start</div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> No credit card</div>
-              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Setup in minutes</div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Browse without sign-in</div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Apply with one click</div>
+              <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Sign in when ready</div>
             </div>
           </div>
         </section>

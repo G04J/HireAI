@@ -20,7 +20,6 @@ import {
   Zap,
   Wifi,
   Volume2,
-  Coffee,
   ChevronRight,
   AlertCircle,
 } from 'lucide-react';
@@ -82,16 +81,16 @@ function stageTypeLabel(type: string) {
 
 function ProcessStep({ number, title, description }: { number: string; title: string; description: string }) {
   return (
-    <div className="flex gap-4 p-5 rounded-xl bg-white border border-primary/5 group hover:border-primary/40 hover:shadow-md transition-all">
-      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
+    <div className="flex gap-4 p-5 rounded-xl bg-slate-800/40 border border-white/10 group hover:border-blue-500/40 hover:shadow-md transition-all">
+      <div className="w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all">
         {number}
       </div>
       <div className="space-y-1">
-        <h4 className="font-bold flex items-center gap-2">
+        <h4 className="font-bold flex items-center gap-2 text-white">
           {title}
-          <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:translate-x-1 transition-transform" />
+          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
         </h4>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
       </div>
     </div>
   );
@@ -121,12 +120,12 @@ export default async function CandidateJobLanding({
 
   if (!job) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/20 p-6">
-        <Card className="max-w-md w-full text-center p-8">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Job not found</h2>
-          <p className="text-muted-foreground mb-6">This job posting doesn&apos;t exist or has been removed.</p>
-          <Button asChild><Link href="/candidate/jobs">Browse jobs</Link></Button>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+        <Card className="max-w-md w-full text-center p-8 bg-slate-900/60 border-white/10">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2 text-white">Job not found</h2>
+          <p className="text-slate-400 mb-6">This job posting doesn&apos;t exist or has been removed.</p>
+          <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0"><Link href="/candidate/jobs">Browse jobs</Link></Button>
         </Card>
       </div>
     );
@@ -156,14 +155,16 @@ export default async function CandidateJobLanding({
   const totalMinutes = stages.reduce((sum, s) => sum + (s.duration_minutes ?? 15), 0) || stages.length * 15;
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col">
-      <header className="px-6 h-16 flex items-center border-b bg-white shadow-sm shrink-0 sticky top-0 z-50">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
+    <div className="min-h-screen bg-slate-950 flex flex-col text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 group">
+          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
+            <Shield className="w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
         </Link>
-        <nav className="ml-auto flex items-center gap-4 text-sm text-muted-foreground">
-          <Link href={`/candidate/${candidateId}`} className="hover:text-primary transition-colors">
+        <nav className="ml-auto flex items-center gap-4 text-sm text-slate-400">
+          <Link href={`/candidate/${candidateId}`} className="hover:text-white transition-colors">
             My applications
           </Link>
         </nav>
@@ -173,11 +174,11 @@ export default async function CandidateJobLanding({
         <div className="grid lg:grid-cols-[1fr_350px] gap-8 animate-in fade-in duration-500">
           <div className="space-y-8">
             <div className="space-y-4">
-              <Badge variant="outline" className="bg-primary/5 text-primary">
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
                 Hiring via AegisHire AI
               </Badge>
-              <h1 className="text-4xl font-extrabold tracking-tight">{job.title}</h1>
-              <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
+              <h1 className="text-4xl font-extrabold tracking-tight text-white">{job.title}</h1>
+              <div className="flex flex-wrap items-center gap-6 text-slate-400">
                 <span className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4" /> {job.company_name}
                 </span>
@@ -189,18 +190,20 @@ export default async function CandidateJobLanding({
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4" /> {job.seniority}
                 </span>
-                {job.category && <Badge variant="secondary">{job.category}</Badge>}
+                {job.category && <Badge variant="secondary" className="bg-slate-700 text-slate-200">{job.category}</Badge>}
               </div>
               <div className="flex items-center gap-3">
                 <Badge
-                  variant={
-                    isCompleted ? 'default' : isRejected ? 'destructive' : 'secondary'
+                  className={
+                    isCompleted ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                    : isRejected ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+                    : 'bg-slate-700 text-slate-300'
                   }
                 >
                   {statusLabel(application.status)}
                 </Badge>
                 {application.applied_at && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-slate-500">
                     Applied {new Date(application.applied_at).toLocaleDateString()}
                   </span>
                 )}
@@ -208,40 +211,40 @@ export default async function CandidateJobLanding({
             </div>
 
             {isCompleted ? (
-              <Card className="border-green-200 bg-green-50">
+              <Card className="border-green-500/30 bg-green-500/10">
                 <CardContent className="p-6 flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center shrink-0">
                     <Zap className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-green-800">Interview Completed</h3>
-                    <p className="text-sm text-green-700 mt-1">
+                    <h3 className="font-bold text-green-400">Interview Completed</h3>
+                    <p className="text-sm text-green-300/80 mt-1">
                       You've completed the interview for this role. The hiring team will review your results and be in touch.
                     </p>
-                    <Button asChild className="mt-4" variant="outline">
+                    <Button asChild className="mt-4 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" variant="outline">
                       <Link href={`/candidate/${candidateId}`}>Back to dashboard</Link>
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             ) : isRejected ? (
-              <Card className="border-destructive/20 bg-destructive/5">
+              <Card className="border-red-500/30 bg-red-500/10">
                 <CardContent className="p-6">
-                  <h3 className="font-bold text-destructive">Application closed</h3>
-                  <p className="text-sm text-muted-foreground mt-1">This application is no longer active.</p>
+                  <h3 className="font-bold text-red-400">Application closed</h3>
+                  <p className="text-sm text-slate-400 mt-1">This application is no longer active.</p>
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-2 border-primary/5 overflow-hidden shadow-md">
-                <div className="h-1.5 bg-primary w-full" />
+              <Card className="border-2 border-white/10 overflow-hidden shadow-md bg-slate-900/60">
+                <div className="h-1.5 bg-blue-600 w-full" />
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-2xl">Welcome to your AI Interview</CardTitle>
-                  <CardDescription className="text-lg">
+                  <CardTitle className="text-2xl text-white">Welcome to your AI Interview</CardTitle>
+                  <CardDescription className="text-lg text-slate-400">
                     You have been invited to complete a multi-stage automated assessment.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-slate-300 leading-relaxed">
                     AegisHire uses advanced artificial intelligence to conduct fair, efficient, and interactive interviews.
                     This process allows you to showcase your skills through behavioral questions, technical simulations,
                     and real-world scenarios.
@@ -251,22 +254,22 @@ export default async function CandidateJobLanding({
                     {[
                       { icon: <Wifi className="w-5 h-5" />, title: 'Stable Connection', desc: 'Ensure you have a reliable internet link.' },
                       { icon: <Volume2 className="w-5 h-5" />, title: 'Quiet Workspace', desc: 'Find a distraction-free area to focus.' },
-                      { icon: <Clock className="w-5 h-5" />, title: 'Dedicated Time', desc: `Plan for about ${totalMinutes}-${totalMinutes + 15} mins of work.` },
-                      { icon: <Coffee className="w-5 h-5" />, title: 'Break Friendly', desc: 'You can pause between major stages.' },
+                      { icon: <Clock className="w-5 h-5" />, title: 'Dedicated Time', desc: `Plan for about ${totalMinutes}-${totalMinutes + 15} mins. Once you start, you cannot pause or leave—similar to a traditional interview.` },
+                      { icon: <Shield className="w-5 h-5" />, title: 'One Attempt', desc: 'If you leave mid-interview, you cannot rejoin. You will be evaluated on completed questions only.' },
                     ].map(({ icon, title, desc }) => (
-                      <div key={title} className="p-4 rounded-xl bg-muted/50 border flex items-start gap-3">
-                        <div className="mt-1 text-primary">{icon}</div>
+                      <div key={title} className="p-4 rounded-xl bg-slate-800/50 border border-white/10 flex items-start gap-3">
+                        <div className="mt-1 text-blue-400">{icon}</div>
                         <div>
-                          <h4 className="font-bold text-sm">{title}</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                          <h4 className="font-bold text-sm text-white">{title}</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter className="bg-primary/5 border-t p-6 flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-accent fill-accent" />
+                <CardFooter className="bg-blue-600/10 border-t border-white/10 p-6 flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-cyan-400" />
                     Ready whenever you are.
                   </p>
                   {user ? (
@@ -277,7 +280,7 @@ export default async function CandidateJobLanding({
                       resumeSessionId={resumeSessionId}
                     />
                   ) : (
-                    <Button size="lg" asChild className="px-10 h-12 text-lg font-bold shadow-lg shadow-primary/20">
+                    <Button size="lg" asChild className="px-10 h-12 text-lg font-bold bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
                       <Link href={`/login?next=/candidate/${candidateId}/${jobId}`}>
                         Log in to start
                       </Link>
@@ -288,7 +291,7 @@ export default async function CandidateJobLanding({
             )}
 
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">What to expect</h2>
+              <h2 className="text-xl font-bold text-white">What to expect</h2>
               <div className="grid gap-3">
                 {stages.length > 0 ? (
                   stages.map((stage, i) => (
@@ -316,13 +319,13 @@ export default async function CandidateJobLanding({
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <Card className="sticky top-24 border-2 border-primary/10 shadow-lg">
+            <Card className="sticky top-24 border-2 border-white/10 shadow-lg bg-slate-900/60">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-accent fill-accent" />
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <Zap className="w-5 h-5 text-cyan-400" />
                   Interview Pipeline
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-slate-400">
                   {stages.length} stage{stages.length !== 1 ? 's' : ''} in this assessment.
                 </CardDescription>
               </CardHeader>
@@ -334,24 +337,24 @@ export default async function CandidateJobLanding({
                     return (
                       <div
                         key={stage.id}
-                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
                       >
                         <div
                           className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
                             stageComplete
-                              ? 'bg-primary border-primary text-white'
+                              ? 'bg-blue-600 border-blue-600 text-white'
                               : stageActive
-                              ? 'border-primary text-primary bg-primary/10'
-                              : 'border-muted bg-white text-muted-foreground'
+                              ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+                              : 'border-white/20 bg-slate-800 text-slate-400'
                           }`}
                         >
                           {stageComplete ? '✓' : idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{stageTypeLabel(stage.type)}</p>
+                          <p className="text-sm font-semibold truncate text-white">{stageTypeLabel(stage.type)}</p>
                           <Badge
                             variant="outline"
-                            className="text-[10px] h-4 px-1.5 uppercase tracking-wider bg-white/50"
+                            className="text-[10px] h-4 px-1.5 uppercase tracking-wider bg-slate-800/50 border-white/10 text-slate-400"
                           >
                             {stageComplete ? 'done' : stageActive ? 'in progress' : 'not started'}
                           </Badge>
@@ -360,14 +363,14 @@ export default async function CandidateJobLanding({
                     );
                   })
                 ) : (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
+                  <p className="text-sm text-slate-400 py-4 text-center">
                     Stages will be loaded when you begin.
                   </p>
                 )}
               </CardContent>
               {stages.length > 0 && (
-                <CardFooter className="pt-4 border-t px-6 flex flex-col gap-3">
-                  <div className="w-full flex justify-between text-xs font-bold uppercase tracking-tighter text-muted-foreground">
+                <CardFooter className="pt-4 border-t border-white/10 px-6 flex flex-col gap-3">
+                  <div className="w-full flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-400">
                     <span>Overall Progress</span>
                     <span>
                       {isCompleted
@@ -376,9 +379,9 @@ export default async function CandidateJobLanding({
                       %
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-500"
+                      className="h-full bg-blue-600 transition-all duration-500"
                       style={{
                         width: isCompleted
                           ? '100%'
@@ -390,12 +393,12 @@ export default async function CandidateJobLanding({
               )}
             </Card>
 
-            <div className="p-5 rounded-2xl bg-white border border-primary/10 shadow-sm space-y-3">
-              <div className="flex items-center gap-2 text-primary font-bold">
+            <div className="p-5 rounded-2xl bg-slate-900/60 border border-white/10 shadow-sm space-y-3">
+              <div className="flex items-center gap-2 text-blue-400 font-bold">
                 <Shield className="w-5 h-5" />
                 <h4 className="text-sm">Secure Assessment</h4>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 AegisHire uses secure session management to protect your information and ensure a fair screening process.
                 Your responses are stored safely.
               </p>
@@ -404,13 +407,15 @@ export default async function CandidateJobLanding({
         </div>
       </main>
 
-      <footer className="py-10 px-6 border-t bg-muted/30">
+      <footer className="py-12 px-6 border-t border-white/10 bg-slate-950">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <span className="font-bold text-lg">AegisHire</span>
+            <div className="p-1.5 bg-blue-600 rounded-lg">
+              <Shield className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-lg text-white">AegisHire</span>
           </div>
-          <p className="text-sm text-muted-foreground">© 2025 AegisHire Inc. All rights reserved.</p>
+          <p className="text-sm text-slate-500">© 2025 AegisHire Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>
@@ -431,14 +436,16 @@ function ApplyView({
   const skills = job.must_have_skills ?? [];
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col">
-      <header className="px-6 h-16 flex items-center border-b bg-white shadow-sm shrink-0 sticky top-0 z-50">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
+    <div className="min-h-screen bg-slate-950 flex flex-col text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 group">
+          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
+            <Shield className="w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
         </Link>
-        <nav className="ml-auto flex items-center gap-4 text-sm text-muted-foreground">
-          <Link href={`/candidate/${candidateId}`} className="hover:text-primary transition-colors">
+        <nav className="ml-auto flex items-center gap-4 text-sm text-slate-400">
+          <Link href={`/candidate/${candidateId}`} className="hover:text-white transition-colors">
             My applications
           </Link>
         </nav>
@@ -447,11 +454,11 @@ function ApplyView({
       <main className="flex-1 max-w-4xl mx-auto w-full p-6 lg:p-10">
         <div className="space-y-8">
           <div className="space-y-4">
-            <Badge variant="outline" className="bg-primary/5 text-primary">
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
               Hiring via AegisHire AI
             </Badge>
-            <h1 className="text-4xl font-extrabold tracking-tight">{job.title}</h1>
-            <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white">{job.title}</h1>
+            <div className="flex flex-wrap items-center gap-6 text-slate-400">
               <span className="flex items-center gap-2">
                 <Briefcase className="w-4 h-4" /> {job.company_name}
               </span>
@@ -463,41 +470,41 @@ function ApplyView({
               <span className="flex items-center gap-2">
                 <Clock className="w-4 h-4" /> {job.seniority}
               </span>
-              {job.category && <Badge variant="secondary">{job.category}</Badge>}
+              {job.category && <Badge variant="secondary" className="bg-slate-700 text-slate-200">{job.category}</Badge>}
             </div>
           </div>
 
-          <Card className="border-2 border-primary/5 overflow-hidden shadow-md">
-            <div className="h-1.5 bg-primary w-full" />
+          <Card className="border-2 border-white/10 overflow-hidden shadow-md bg-slate-900/60">
+            <div className="h-1.5 bg-blue-600 w-full" />
             <CardHeader className="pb-4">
-              <CardTitle className="text-2xl">About this role</CardTitle>
+              <CardTitle className="text-2xl text-white">About this role</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="prose prose-sm max-w-none text-muted-foreground">
+              <div className="prose prose-sm max-w-none text-slate-300">
                 <p className="whitespace-pre-wrap">{job.description}</p>
               </div>
               {skills.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Key skills</h4>
+                  <h4 className="font-semibold mb-2 text-white">Key skills</h4>
                   <div className="flex flex-wrap gap-2">
                     {skills.map((s) => (
-                      <Badge key={s} variant="secondary">{s}</Badge>
+                      <Badge key={s} variant="secondary" className="bg-slate-700 text-slate-200">{s}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               {stages.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Interview pipeline ({stages.length} stage{stages.length !== 1 ? 's' : ''})</h4>
+                  <h4 className="font-semibold mb-2 text-white">Interview pipeline ({stages.length} stage{stages.length !== 1 ? 's' : ''})</h4>
                   <div className="space-y-2">
                     {stages.map((stage, i) => (
-                      <div key={stage.id} className="flex items-center gap-3 p-3 rounded-lg border bg-white">
-                        <div className="w-7 h-7 rounded-full border-2 border-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
+                      <div key={stage.id} className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-slate-800/40">
+                        <div className="w-7 h-7 rounded-full border-2 border-white/20 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
                           {i + 1}
                         </div>
-                        <span className="text-sm font-medium">{stageTypeLabel(stage.type)}</span>
+                        <span className="text-sm font-medium text-white">{stageTypeLabel(stage.type)}</span>
                         {stage.duration_minutes && (
-                          <span className="text-xs text-muted-foreground ml-auto">{stage.duration_minutes} min</span>
+                          <span className="text-xs text-slate-400 ml-auto">{stage.duration_minutes} min</span>
                         )}
                       </div>
                     ))}
@@ -505,9 +512,9 @@ function ApplyView({
                 </div>
               )}
             </CardContent>
-            <CardFooter className="bg-primary/5 border-t p-6 flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Zap className="w-4 h-4 text-accent fill-accent" />
+            <CardFooter className="bg-blue-600/10 border-t border-white/10 p-6 flex items-center justify-between">
+              <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-cyan-400" />
                 Submit your application to begin.
               </p>
               <ApplyButton jobId={jobId} candidateId={candidateId} />

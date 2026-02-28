@@ -124,16 +124,18 @@ export default async function EmployerDashboard({
   const [jobs, stats] = await Promise.all([getJobs(employerId), getDashboardStats(employerId)]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/20">
-      <header className="px-6 h-16 flex items-center border-b bg-white">
-        <Link href="/" className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
+    <div className="flex flex-col min-h-screen bg-slate-950 text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
+            <Shield className="w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/employer/${employerId}`}>Dashboard</Link>
-          </Button>
+          <Link href={`/employer/${employerId}`} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            Dashboard
+          </Link>
           <AuthNav user={user ?? null} />
         </div>
       </header>
@@ -141,15 +143,15 @@ export default async function EmployerDashboard({
       <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Employer Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-3xl font-bold text-white">Employer Dashboard</h1>
+            <p className="text-slate-400 mt-1">
               Manage your interview pipelines and evaluate candidates.
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Employer ID: <span className="font-mono">{employerId}</span>
             </p>
           </div>
-          <Button asChild className="gap-2">
+          <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
             <Link href={`/employer/${employerId}/jobs/new`}>
               <Plus className="w-4 h-4" /> Create New Job Profile
             </Link>
@@ -175,23 +177,23 @@ export default async function EmployerDashboard({
             />
           </div>
 
-          <Card>
+          <Card className="bg-slate-900/60 border-white/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Job Profiles</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Job Profiles</CardTitle>
+                <CardDescription className="text-slate-400">
                   Published jobs are live on the job board and accepting applications.
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="divide-y">
+              <div className="divide-y divide-white/10">
                 {jobs.length === 0 ? (
-                  <div className="py-8 text-sm text-muted-foreground text-center">
+                  <div className="py-8 text-sm text-slate-400 text-center">
                     No job profiles yet.{' '}
                     <Link
                       href={`/employer/${employerId}/jobs/new`}
-                      className="text-primary underline"
+                      className="text-blue-400 underline"
                     >
                       Create your first pipeline
                     </Link>{' '}
@@ -205,11 +207,12 @@ export default async function EmployerDashboard({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{job.title}</h3>
+                          <h3 className="font-semibold text-lg text-white">{job.title}</h3>
                           <Badge
                             variant={
                               job.publish_state === 'published' ? 'default' : 'secondary'
                             }
+                            className={job.publish_state === 'published' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-slate-700 text-slate-300'}
                           >
                             {job.publish_state === 'published'
                               ? 'Published'
@@ -218,7 +221,7 @@ export default async function EmployerDashboard({
                               : 'Draft'}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 text-sm text-slate-400">
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" /> {job.candidateCount ?? 0} candidates
                           </span>
@@ -231,7 +234,7 @@ export default async function EmployerDashboard({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white">
                           <Link
                             href={
                               job.public_slug ? `/jobs/${job.public_slug}` : `/jobs/${job.id}`
@@ -241,7 +244,7 @@ export default async function EmployerDashboard({
                             <ExternalLink className="w-4 h-4 mr-2" /> Share Link
                           </Link>
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white">
                           <Link href={`/employer/${employerId}/${job.id}`}>Manage</Link>
                         </Button>
                       </div>
@@ -267,13 +270,13 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <Card className="bg-white">
+    <Card className="bg-slate-900/60 border-white/10">
       <CardContent className="p-6 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-          <h3 className="text-3xl font-bold">{value}</h3>
+          <p className="text-sm font-medium text-slate-400 mb-1">{title}</p>
+          <h3 className="text-3xl font-bold text-white">{value}</h3>
         </div>
-        <div className="p-3 bg-muted rounded-full">{icon}</div>
+        <div className="p-3 bg-blue-600/20 rounded-full text-blue-400">{icon}</div>
       </CardContent>
     </Card>
   );

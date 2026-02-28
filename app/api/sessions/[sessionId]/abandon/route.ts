@@ -1,10 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient as createAuthClient } from '@/lib/supabase/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
 import { generateEvaluationReport, type GenerateEvaluationReportInput } from '@/ai/flows/generate-evaluation-report-flow';
 
+/**
+ * Abandon an active interview session.
+ * Mirrors traditional hiring: leaving mid-interview ends the session permanently.
+ * Candidate is evaluated on completed portion only. No rejoin allowed.
+ */
 export async function POST(
-  req: NextRequest,
+  _req: Request,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
@@ -12,11 +17,6 @@ export async function POST(
     const auth = await createAuthClient();
     const { data: { user }, error: authError } = await auth.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const body = await req.json();
-    const stageResults = body?.stageResults ?? [];
-    const candidateData = body?.candidateData ?? null;
-    const resumeFitCheckResult = body?.resumeFitCheckResult ?? null;
 
     const supabase = createServerSupabaseClient();
     const { data: session, error: sessionError } = await supabase
@@ -31,7 +31,9 @@ export async function POST(
     if (session.user_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-
+    if (session.status !== 'active') {
+      return NextResponse.json({ error: 'Session is not active' }, { status: 400 });
+    }
     if (!session.application_id) {
       return NextResponse.json({ error: 'Session is not linked to an application' }, { status: 400 });
     }
@@ -47,6 +49,35 @@ export async function POST(
       .select('id, type, ai_usage_policy')
       .eq('job_profile_id', session.job_profile_id)
       .order('index', { ascending: true });
+
+    const { data: stageSessions } = await supabase
+      .from('stage_sessions')
+      .select('id, job_stage_id')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    const stageResults: GenerateEvaluationReportInput['stageResults'] = [];
+
+    for (const ss of stageSessions ?? []) {
+      const jobStage = (stages ?? []).find((s) => s.id === ss.job_stage_id);
+      const { data: responses } = await supabase
+        .from('question_responses')
+        .select('id, question_text, transcript_text')
+        .eq('stage_session_id', ss.id)
+        .order('question_index', { ascending: true });
+
+      for (const qr of responses ?? []) {
+        if (qr.transcript_text) {
+          stageResults.push({
+            stageId: ss.job_stage_id,
+            stageType: jobStage?.type ?? 'behavioral',
+            question: qr.question_text ?? '',
+            candidateAnswer: qr.transcript_text,
+            aiAllowed: jobStage?.ai_usage_policy !== 'not_allowed',
+          });
+        }
+      }
+    }
 
     const jobProfile: GenerateEvaluationReportInput['jobProfile'] = {
       title: job?.title ?? 'Job',
@@ -66,26 +97,40 @@ export async function POST(
     const input: GenerateEvaluationReportInput = {
       jobProfile,
       candidateData: {
-        name: candidateData?.name ?? (user.user_metadata?.full_name as string | undefined) ?? userEmail.split('@')[0] ?? 'Candidate',
-        email: candidateData?.email ?? userEmail,
-        education: candidateData?.education ?? '',
-        experienceSummary: candidateData?.experienceSummary ?? '',
-        resumeText: candidateData?.resumeText ?? '',
+        name: (user.user_metadata?.full_name as string | undefined) ?? userEmail.split('@')[0] ?? 'Candidate',
+        email: userEmail,
+        education: '',
+        experienceSummary: '',
+        resumeText: '',
       },
       resumeFitCheckResult: {
-        fitScore: resumeFitCheckResult?.fitScore ?? 0,
-        matchedSkills: resumeFitCheckResult?.matchedSkills ?? [],
-        missingSkills: resumeFitCheckResult?.missingSkills ?? [],
-        justification: resumeFitCheckResult?.justification ?? '',
+        fitScore: 0,
+        matchedSkills: [],
+        missingSkills: [],
+        justification: 'Resume not evaluated during partial interview.',
       },
       stageResults,
     };
 
-    const report = await generateEvaluationReport(input);
+    let report;
+    if (stageResults.length === 0) {
+      report = {
+        overallSummary: 'Candidate left the interview before completing any questions. No evaluation possible.',
+        hiringRecommendation: 'No Hire' as const,
+        overallConfidenceScore: 0,
+        jobFitAnalysis: { fitLevel: 'Weak Fit' as const, matchedCompetencies: [], gapAreas: ['Incomplete interview'], growthPotential: 'Unable to assess.' },
+        communicationAssessment: { clarity: 0, articulation: 0, confidence: 0, overallCommunicationScore: 0, feedback: 'No responses recorded.' },
+        resumeAnalysis: { fitScore: 0, matchedSkills: [], missingSkills: [], justification: 'Interview abandoned before completion.' },
+        stageEvaluations: [],
+        humanReadableReport: '## Interview Abandoned\n\nThe candidate left the interview before completing any questions. No evaluation is available.',
+      };
+    } else {
+      report = await generateEvaluationReport(input);
+    }
 
     const now = new Date().toISOString();
     await Promise.all([
-      supabase.from('interview_sessions').update({ status: 'completed', last_activity_at: now }).eq('id', sessionId),
+      supabase.from('interview_sessions').update({ status: 'abandoned', last_activity_at: now }).eq('id', sessionId),
       supabase.from('job_applications').update({ status: 'completed', updated_at: now }).eq('id', session.application_id),
       supabase.from('reports').upsert(
         {
@@ -100,14 +145,13 @@ export async function POST(
       ),
     ]);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       recommendation: report.hiringRecommendation,
       overallConfidenceScore: report.overallConfidenceScore,
     });
   } catch (err) {
-    console.error('POST /api/sessions/[sessionId]/complete', err);
+    console.error('POST /api/sessions/[sessionId]/abandon', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
   }
 }
-

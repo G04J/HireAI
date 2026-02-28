@@ -75,21 +75,21 @@ export default function SignUpPage() {
   }
 
   return (
-    <Card>
+    <Card className="bg-slate-900/80 border-white/10 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
-        <CardDescription>Sign up and choose how you&apos;ll use AegisHire.</CardDescription>
+        <CardTitle className="text-white">Create an account</CardTitle>
+        <CardDescription className="text-slate-400">Sign up and choose how you&apos;ll use AegisHire.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 rounded-md p-3">
+            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-md p-3">
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>I want to</Label>
+            <Label className="text-slate-300">I want to</Label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -97,13 +97,13 @@ export default function SignUpPage() {
                 className={cn(
                   'flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-left transition-colors',
                   role === 'candidate'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-muted hover:border-muted-foreground/50'
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                    : 'border-white/10 text-slate-400 hover:border-white/30'
                 )}
               >
                 <User className="w-6 h-6" />
                 <span className="font-medium">Find a job</span>
-                <span className="text-xs text-muted-foreground">Apply and interview</span>
+                <span className="text-xs text-slate-500">Apply and interview</span>
               </button>
               <button
                 type="button"
@@ -111,19 +111,19 @@ export default function SignUpPage() {
                 className={cn(
                   'flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-left transition-colors',
                   role === 'employer'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-muted hover:border-muted-foreground/50'
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                    : 'border-white/10 text-slate-400 hover:border-white/30'
                 )}
               >
                 <Briefcase className="w-6 h-6" />
                 <span className="font-medium">Hire talent</span>
-                <span className="text-xs text-muted-foreground">Post jobs & manage candidates</span>
+                <span className="text-xs text-slate-500">Post jobs & manage candidates</span>
               </button>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName" className="text-slate-300">Full name</Label>
             <Input
               id="fullName"
               type="text"
@@ -131,10 +131,11 @@ export default function SignUpPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
+              className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone" className="text-slate-300">Phone (optional)</Label>
             <Input
               id="phone"
               type="tel"
@@ -142,27 +143,29 @@ export default function SignUpPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               autoComplete="tel"
+              className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
           {role === 'employer' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company name</Label>
+                <Label htmlFor="companyName" className="text-slate-300">Company name</Label>
                 <Input
                   id="companyName"
                   type="text"
                   placeholder="Acme Inc."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
+                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="employerRole">Your role at company</Label>
+                <Label htmlFor="employerRole" className="text-slate-300">Your role at company</Label>
                 <Select value={employerRole} onValueChange={(v: 'admin' | 'recruiter' | 'hiring_manager') => setEmployerRole(v)}>
-                  <SelectTrigger id="employerRole">
+                  <SelectTrigger id="employerRole" className="bg-slate-800/50 border-white/10 text-white">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-800 border-white/10">
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="recruiter">Recruiter</SelectItem>
                     <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
@@ -172,7 +175,7 @@ export default function SignUpPage() {
             </>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-slate-300">Email</Label>
             <Input
               id="email"
               type="email"
@@ -181,10 +184,11 @@ export default function SignUpPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-slate-300">Password</Label>
             <Input
               id="password"
               type="password"
@@ -194,16 +198,17 @@ export default function SignUpPage() {
               required
               minLength={6}
               autoComplete="new-password"
+              className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500"
             />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30" disabled={loading}>
             {loading ? 'Creating account…' : 'Sign up'}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-primary font-medium hover:underline">
+            <Link href="/login" className="text-blue-400 font-medium hover:text-blue-300">
               Sign in
             </Link>
           </p>

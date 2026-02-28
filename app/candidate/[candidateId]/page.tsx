@@ -81,91 +81,93 @@ export default async function CandidateDashboard({
   }, {});
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/20">
-      <header className="px-6 h-16 flex items-center border-b bg-white">
-        <Link href="/" className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <span className="text-xl font-bold tracking-tight text-primary">AegisHire</span>
+    <div className="flex flex-col min-h-screen bg-slate-950 text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
+            <Shield className="w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/candidate/${candidateId}`}>My applications</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/jobBoard">Job board</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/employer">For employers</Link>
-          </Button>
+          <Link href={`/candidate/${candidateId}`} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            My applications
+          </Link>
+          <Link href="/candidate/jobs" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            Job board
+          </Link>
+          <Link href="/employer" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            For employers
+          </Link>
           <AuthNav user={user ?? null} />
         </div>
       </header>
 
       <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Candidate home</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-white">Candidate home</h1>
+          <p className="text-slate-400 mt-1">
             Discover open roles and track your applications.
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Candidate ID: <span className="font-mono">{candidateId}</span>
           </p>
         </div>
 
         <div className="grid gap-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="bg-white">
+            <Card className="bg-slate-900/60 border-white/10">
               <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Total applications</p>
-                  <h3 className="text-3xl font-bold">{applications.length}</h3>
+                  <p className="text-sm font-medium text-slate-400 mb-1">Total applications</p>
+                  <h3 className="text-3xl font-bold text-white">{applications.length}</h3>
                 </div>
-                <div className="p-3 bg-muted rounded-full">
+                <div className="p-3 bg-blue-600/20 rounded-full text-blue-400">
                   <Briefcase className="w-4 h-4" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white">
+            <Card className="bg-slate-900/60 border-white/10">
               <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">In progress</p>
-                  <h3 className="text-3xl font-bold">{inProgress.length}</h3>
+                  <p className="text-sm font-medium text-slate-400 mb-1">In progress</p>
+                  <h3 className="text-3xl font-bold text-white">{inProgress.length}</h3>
                 </div>
-                <div className="p-3 bg-muted rounded-full">
+                <div className="p-3 bg-cyan-600/20 rounded-full text-cyan-400">
                   <Clock className="w-4 h-4" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white">
+            <Card className="bg-slate-900/60 border-white/10">
               <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Offers</p>
-                  <h3 className="text-3xl font-bold">{offered.length}</h3>
+                  <p className="text-sm font-medium text-slate-400 mb-1">Offers</p>
+                  <h3 className="text-3xl font-bold text-white">{offered.length}</h3>
                 </div>
-                <div className="p-3 bg-muted rounded-full">
+                <div className="p-3 bg-green-600/20 rounded-full text-green-400">
                   <Briefcase className="w-4 h-4" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
+          <Card className="bg-slate-900/60 border-white/10">
             <CardHeader>
-              <CardTitle>Applications</CardTitle>
-              <CardDescription>Jobs this candidate has applied to or been invited to.</CardDescription>
+              <CardTitle className="text-white">Applications</CardTitle>
+              <CardDescription className="text-slate-400">Jobs this candidate has applied to or been invited to.</CardDescription>
             </CardHeader>
             <CardContent>
               {applications.length === 0 ? (
                 <div className="py-12 text-center space-y-4">
-                  <p className="text-muted-foreground">No applications yet for this candidate.</p>
-                  <Button asChild>
-                    <Link href="/jobBoard">
+                  <p className="text-slate-400">No applications yet for this candidate.</p>
+                  <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
+                    <Link href="/candidate/jobs">
                       Browse jobs <ArrowRight className="w-4 h-4 ml-2" />
                     </Link>
                   </Button>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y divide-white/10">
                   {applications.map((app: any) => (
                     <div
                       key={app.application_id}
@@ -173,12 +175,22 @@ export default async function CandidateDashboard({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">{app.job_title}</h3>
-                          <Badge variant={statusVariant(app.application_status)}>
+                          <h3 className="font-semibold text-lg text-white">{app.job_title}</h3>
+                          <Badge 
+                            className={
+                              ['offered', 'completed'].includes(app.application_status) 
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : ['rejected', 'withdrawn'].includes(app.application_status)
+                                ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                : ['in_interview', 'screening'].includes(app.application_status)
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                : 'bg-slate-700 text-slate-300'
+                            }
+                          >
                             {app.application_status.replace('_', ' ')}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Building2 className="w-3 h-3" /> {app.job_company_name}
                           </span>
@@ -190,20 +202,24 @@ export default async function CandidateDashboard({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="outline" size="sm" asChild>
+                        <Button
+                          size="sm"
+                          asChild
+                          className={
+                            ['screening', 'in_interview'].includes(app.application_status)
+                              ? 'bg-blue-600 hover:bg-blue-500 text-white border-0'
+                              : 'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white'
+                          }
+                          variant={['screening', 'in_interview'].includes(app.application_status) ? 'default' : 'outline'}
+                        >
                           <Link href={`/candidate/${candidateId}/${app.job_profile_id}`}>
-                            View application
+                            {['screening', 'in_interview'].includes(app.application_status) ? (
+                              <>Continue <ArrowRight className="w-4 h-4 ml-1" /></>
+                            ) : (
+                              'View application'
+                            )}
                           </Link>
                         </Button>
-                        {['applied', 'screening', 'in_interview'].includes(
-                          app.application_status,
-                        ) && (
-                          <Button size="sm" asChild>
-                            <Link href={`/candidate/${candidateId}/${app.job_profile_id}/interview`}>
-                              Continue <ArrowRight className="w-4 h-4 ml-1" />
-                            </Link>
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -212,24 +228,24 @@ export default async function CandidateDashboard({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-slate-900/60 border-white/10">
             <CardHeader id="open-roles">
-              <CardTitle>Open roles</CardTitle>
-              <CardDescription>Jobs currently published on AegisHire.</CardDescription>
+              <CardTitle className="text-white">Open roles</CardTitle>
+              <CardDescription className="text-slate-400">Jobs currently published on AegisHire.</CardDescription>
             </CardHeader>
             <CardContent>
               {jobs.length === 0 ? (
-                <div className="py-8 text-sm text-muted-foreground text-center">
+                <div className="py-8 text-sm text-slate-400 text-center">
                   No published jobs are available yet. Check back soon.
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y divide-white/10">
                   {jobs.map((job: any) => {
                     const app = applicationsByJobId[job.id];
                     const hasApplied = Boolean(app);
                     const canContinue =
                       app &&
-                      ['applied', 'screening', 'in_interview'].includes(
+                      ['screening', 'in_interview'].includes(
                         app.application_status,
                       );
                     return (
@@ -239,10 +255,12 @@ export default async function CandidateDashboard({
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-lg">{job.title}</h3>
+                            <h3 className="font-semibold text-lg text-white">{job.title}</h3>
                             <Badge
-                              variant={
-                                job.publish_state === 'published' ? 'default' : 'secondary'
+                              className={
+                                job.publish_state === 'published' 
+                                  ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                                  : 'bg-slate-700 text-slate-300'
                               }
                             >
                               {job.publish_state === 'published'
@@ -250,7 +268,7 @@ export default async function CandidateDashboard({
                                 : job.publish_state}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Building2 className="w-3 h-3" /> {job.company_name}
                             </span>
@@ -266,18 +284,24 @@ export default async function CandidateDashboard({
                             variant={hasApplied ? 'outline' : 'default'}
                             size="sm"
                             asChild
+                            className={
+                              canContinue
+                                ? 'bg-blue-600 hover:bg-blue-500 text-white border-0'
+                                : hasApplied
+                                ? 'border-white/20 text-white hover:bg-white/10 hover:text-white'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white border-0'
+                            }
                           >
                             <Link href={`/candidate/${candidateId}/${job.id}`}>
-                              {hasApplied ? 'View application' : 'Apply'}
+                              {canContinue ? (
+                                <>Continue interview <ArrowRight className="w-4 h-4 ml-1" /></>
+                              ) : hasApplied ? (
+                                'View application'
+                              ) : (
+                                'Apply'
+                              )}
                             </Link>
                           </Button>
-                          {canContinue && (
-                            <Button size="sm" variant="outline" asChild>
-                              <Link href={`/candidate/${candidateId}/${job.id}/interview`}>
-                                Continue interview <ArrowRight className="w-4 h-4 ml-1" />
-                              </Link>
-                            </Button>
-                          )}
                         </div>
                       </div>
                     );

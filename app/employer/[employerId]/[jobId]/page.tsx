@@ -133,23 +133,25 @@ export default function EmployerJobDetails({
   };
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col">
-      <header className="px-6 h-16 flex items-center border-b bg-white shrink-0">
+    <div className="min-h-screen bg-slate-950 flex flex-col text-white">
+      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
         <Link
           href={`/employer/${employerId}`}
-          className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <Shield className="w-5 h-5 text-primary" />
-          <span className="font-bold tracking-tight text-primary">AegisHire</span>
+          <div className="p-1.5 bg-blue-600 rounded-lg">
+            <Shield className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-bold tracking-tight text-white">AegisHire</span>
         </Link>
       </header>
 
       <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-bold">{job?.title ?? 'Job'}</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-3xl font-bold text-white">{job?.title ?? 'Job'}</h1>
+            <p className="text-slate-400 mt-1">
               {job?.company_name ?? 'Company'}
               {job?.category && <span> • {job.category}</span>}
               {job?.location && <span> • {job.location}</span>}
@@ -158,12 +160,13 @@ export default function EmployerJobDetails({
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/employer/${employerId}/jobs/new`}>Edit Pipeline</Link>
+            <Button variant="outline" asChild className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white">
+              <Link href={`/employer/${employerId}/jobs/new`}>Configure Pipeline</Link>
             </Button>
             <Button
               onClick={handlePublish}
               disabled={!job || job.publish_state === 'published' || isPublishing}
+              className="bg-blue-600 hover:bg-blue-500 text-white border-0"
             >
               {job?.publish_state === 'published'
                 ? 'Published'
@@ -175,55 +178,55 @@ export default function EmployerJobDetails({
         </div>
 
         {publishError && (
-          <div className="mb-4 text-sm text-destructive">{publishError}</div>
+          <div className="mb-4 text-sm text-red-400">{publishError}</div>
         )}
 
-        <Card>
+        <Card className="bg-slate-900/60 border-white/10">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-white">
               <Users className="w-5 h-5" /> Candidates
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-400">
               Track progression through the automated multi-stage pipeline.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="py-10 flex items-center justify-center text-muted-foreground">
+              <div className="py-10 flex items-center justify-center text-slate-400">
                 <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading candidates…
               </div>
             ) : loadError ? (
-              <div className="py-10 text-sm text-destructive text-center">{loadError}</div>
+              <div className="py-10 text-sm text-red-400 text-center">{loadError}</div>
             ) : applications.length === 0 ? (
-              <div className="py-10 text-sm text-muted-foreground text-center">
+              <div className="py-10 text-sm text-slate-400 text-center">
                 No applications yet.
               </div>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Fit Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Current Stage</TableHead>
-                    <TableHead>Rec.</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-white/10 hover:bg-transparent">
+                    <TableHead className="text-slate-300">Name</TableHead>
+                    <TableHead className="text-slate-300">Contact</TableHead>
+                    <TableHead className="text-slate-300">Fit Score</TableHead>
+                    <TableHead className="text-slate-300">Status</TableHead>
+                    <TableHead className="text-slate-300">Current Stage</TableHead>
+                    <TableHead className="text-slate-300">Rec.</TableHead>
+                    <TableHead className="text-right text-slate-300">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {applications.map((a) => (
-                    <TableRow key={a.id}>
+                    <TableRow key={a.id} className="border-white/10 hover:bg-white/5">
                       <TableCell>
-                        <div className="font-medium">
+                        <div className="font-medium text-white">
                           {a.user?.full_name ?? a.user?.email ?? 'Candidate'}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-slate-400">
                           {a.user?.email ?? ''}
                         </div>
                         {a.user?.profile_summary && (
                           <div
-                            className="text-xs text-muted-foreground mt-1 max-w-[200px] truncate"
+                            className="text-xs text-slate-500 mt-1 max-w-[200px] truncate"
                             title={a.user.profile_summary}
                           >
                             {a.user.profile_summary}
@@ -231,30 +234,30 @@ export default function EmployerJobDetails({
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">{a.user?.phone ?? '—'}</div>
+                        <div className="text-sm text-slate-300">{a.user?.phone ?? '—'}</div>
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={
+                          className={
                             (a.fit_score ?? 0) > 80
-                              ? 'default'
+                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
                               : (a.fit_score ?? 0) > 60
-                              ? 'secondary'
-                              : 'destructive'
+                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              : 'bg-red-500/20 text-red-400 border-red-500/30'
                           }
                         >
                           {a.fit_score ?? 0}%
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-slate-300">
                           {statusIcon(a.status)}
                           <span className="capitalize text-xs font-medium">
                             {String(a.status).replace('_', ' ')}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm text-slate-300">
                         {a.status === 'completed'
                           ? 'Completed'
                           : typeof a.current_stage_index === 'number'
@@ -266,10 +269,10 @@ export default function EmployerJobDetails({
                           variant="outline"
                           className={
                             (a.report?.recommendation ?? a.recommendation) === 'Strong Hire'
-                              ? 'border-green-500 text-green-600 bg-green-50'
+                              ? 'border-green-500/50 text-green-400 bg-green-500/10'
                               : (a.report?.recommendation ?? a.recommendation) === 'No Hire'
-                              ? 'border-destructive text-destructive bg-destructive/5'
-                              : ''
+                              ? 'border-red-500/50 text-red-400 bg-red-500/10'
+                              : 'border-white/20 text-slate-400'
                           }
                         >
                           {a.report?.recommendation ?? a.recommendation ?? '—'}
@@ -286,53 +289,54 @@ export default function EmployerJobDetails({
                                 setSelectedApplication(a);
                                 fetchReport(a.id);
                               }}
+                              className="text-slate-300 hover:text-white hover:bg-white/10"
                             >
                               {a.report ? 'View Report' : 'No Report'}
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-white/10">
                             <DialogHeader>
-                              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                                <FileText className="w-6 h-6 text-primary" />
+                              <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-white">
+                                <FileText className="w-6 h-6 text-blue-400" />
                                 AI Evaluation Report:{' '}
                                 {selectedApplication?.user?.full_name ??
                                   selectedApplication?.user?.email ??
                                   'Candidate'}
                               </DialogTitle>
-                              <DialogDescription>
+                              <DialogDescription className="text-slate-400">
                                 Generated report for this application.
                               </DialogDescription>
                             </DialogHeader>
 
                             <div className="mt-6 space-y-8">
                               {reportLoading ? (
-                                <div className="py-10 flex items-center justify-center text-muted-foreground">
+                                <div className="py-10 flex items-center justify-center text-slate-400">
                                   <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading
                                   report…
                                 </div>
                               ) : selectedReport?.error ? (
-                                <div className="text-sm text-destructive">
+                                <div className="text-sm text-red-400">
                                   {selectedReport.error}
                                 </div>
                               ) : (
                                 <Tabs defaultValue="markdown" className="w-full">
-                                  <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="markdown">Markdown</TabsTrigger>
-                                    <TabsTrigger value="json">JSON</TabsTrigger>
+                                  <TabsList className="grid w-full grid-cols-2 bg-slate-800">
+                                    <TabsTrigger value="markdown" className="data-[state=active]:bg-slate-700">Markdown</TabsTrigger>
+                                    <TabsTrigger value="json" className="data-[state=active]:bg-slate-700">JSON</TabsTrigger>
                                   </TabsList>
                                   <TabsContent
                                     value="markdown"
-                                    className="p-6 border rounded-lg mt-2 bg-white"
+                                    className="p-6 border border-white/10 rounded-lg mt-2 bg-slate-800/50"
                                   >
-                                    <pre className="whitespace-pre-wrap text-sm leading-relaxed">
+                                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
                                       {selectedReport?.human_readable_report ?? 'No report text.'}
                                     </pre>
                                   </TabsContent>
                                   <TabsContent
                                     value="json"
-                                    className="p-6 border rounded-lg mt-2 bg-white"
+                                    className="p-6 border border-white/10 rounded-lg mt-2 bg-slate-800/50"
                                   >
-                                    <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                                    <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-200">
                                       {JSON.stringify(
                                         selectedReport?.report_json ?? selectedReport ?? {},
                                         null,

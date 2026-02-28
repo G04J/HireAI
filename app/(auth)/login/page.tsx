@@ -46,7 +46,7 @@ function LoginForm() {
     }
     const { role } = await res.json();
     setLoading(false);
-    const redirectTo = next || (role === 'employer' ? '/employer' : '/');
+    const redirectTo = next || (role === 'employer' ? '/employer' : '/candidate');
     router.push(redirectTo);
     router.refresh();
   }

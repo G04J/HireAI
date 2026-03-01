@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
+import { SiteLogo } from '@/components/site-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Shield, 
   CheckCircle2, 
   ArrowRight, 
   Star, 
@@ -173,13 +173,8 @@ export default async function CompletedPage({
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <SiteLogo href={`/candidate/${candidateId}`} height={40} />
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto w-full p-6 lg:p-10">

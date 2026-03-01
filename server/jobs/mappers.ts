@@ -54,6 +54,6 @@ export function buildStageRow(
     competencies: s.competencies ?? s.focusAreas ?? null,
     stage_weights: s.stage_weights ?? null,
     interviewer_voice_id: s.interviewer_voice_id ?? s.voicePreset ?? s.voice ?? null,
-    question_source: mapQuestionSource(s.question_source),
+    question_source: mapQuestionSource(s.questionSource ?? s.question_source),
   };
 }

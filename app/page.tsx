@@ -1,24 +1,39 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Shield, Users, Zap, BarChart3, ChevronRight, Briefcase, CheckCircle, Star } from 'lucide-react';
 import { PipelineDemo } from '@/components/pipeline-demo';
 import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabaseClient';
 import { AuthNav } from '@/components/auth-nav';
+import { SiteLogo } from '@/components/site-logo';
 
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  if (user) {
+    const db = createServerSupabaseClient();
+    const [rolesRes, employerRes] = await Promise.all([
+      db.from('user_roles').select('role').eq('user_id', user.id),
+      db.from('employer_profiles').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    ]);
+    const roles = (rolesRes.data ?? []).map((r: { role: string }) => r.role);
+    const isEmployer = roles.includes('employer') && employerRes.data?.id;
+    const isCandidate = roles.includes('candidate');
+    if (isEmployer && employerRes.data?.id) {
+      redirect(`/employer/${employerRes.data.id}`);
+    }
+    if (isCandidate) {
+      redirect(`/candidate/${user.id}`);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-white">
       {/* HEADER */}
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <SiteLogo href="/" height={40} priority />
         <nav className="ml-auto flex items-center gap-6">
           {user && (
             <Link
@@ -32,7 +47,7 @@ export default async function Home() {
             For Employers
           </Link>
           <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30">
-            <Link href="/candidate/jobs">Browse Jobs</Link>
+            <Link href="/post-a-job">Post a Job</Link>
           </Button>
           <AuthNav user={user} />
         </nav>
@@ -77,12 +92,12 @@ export default async function Home() {
               {/* CTA Buttons */}
               <div className="flex flex-col items-center gap-3 pt-2">
                 <Button size="lg" className="h-14 px-10 text-lg bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-2xl shadow-blue-600/40 font-semibold" asChild>
-                  <Link href="/candidate/jobs">
-                    Browse Jobs <ChevronRight className="ml-2 w-5 h-5" />
+                  <Link href="/post-a-job">
+                    Post a Job <ChevronRight className="ml-2 w-5 h-5" />
                   </Link>
                 </Button>
                 <p className="text-sm text-slate-500">
-                  No sign-in required to browse. Sign in when you&apos;re ready to apply.
+                  Fill in your job details here. Sign in or create an account when you&apos;re ready to publish.
                 </p>
               </div>
 
@@ -199,7 +214,7 @@ export default async function Home() {
                 </span>
               </h2>
               <p className="text-slate-400 max-w-xl mx-auto text-lg">
-                Stop wasting hundreds of hours on first-round screenings. Let AegisHire handle the heavy lifting.
+                Stop wasting hundreds of hours on first-round screenings. Let hireLens handle the heavy lifting.
               </p>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -279,14 +294,9 @@ export default async function Home() {
 
       {/* FOOTER */}
       <footer className="py-12 px-6 border-t border-white/10 bg-slate-950">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg text-white">AegisHire</span>
-          </div>
-          <p className="text-sm text-slate-500">© 2025 AegisHire Inc. All rights reserved.</p>
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+          <SiteLogo href="/" height={32} />
+          <p className="text-sm text-slate-500">© 2025 hireLens Inc. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="#" className="text-sm text-slate-500 hover:text-white transition-colors">Terms</Link>
             <Link href="#" className="text-sm text-slate-500 hover:text-white transition-colors">Privacy</Link>

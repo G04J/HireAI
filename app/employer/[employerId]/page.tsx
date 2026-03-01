@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, Plus, Users, Briefcase, ExternalLink, FileText } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { AuthNav } from '@/components/auth-nav';
+import { SiteLogo } from '@/components/site-logo';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
 
 type DashboardStats = {
@@ -125,13 +126,8 @@ export default async function EmployerDashboard({
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <SiteLogo href={`/employer/${employerId}`} height={40} />
         <div className="ml-auto flex items-center gap-4">
           <Link href={`/employer/${employerId}`} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
             Dashboard

@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { text, voiceId, model } = body;
 
+    console.log('[API text-to-speech] request', { textLen: typeof text === 'string' ? text.length : 0, preview: typeof text === 'string' ? text.slice(0, 60) : '' });
+
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'text is required' }, { status: 400 });
     }

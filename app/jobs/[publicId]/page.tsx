@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SiteLogo } from '@/components/site-logo';
 import {
   Shield,
   Briefcase,
@@ -102,13 +103,8 @@ export default async function PublicJobPage({ params }: { params: Params }) {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <SiteLogo href="/" height={40} />
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full p-6 lg:p-10">
@@ -116,7 +112,7 @@ export default async function PublicJobPage({ params }: { params: Params }) {
           <div className="space-y-8">
             <div className="space-y-4">
               <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
-                Hiring via AegisHire AI
+                Hiring via hireLens AI
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight text-white">{job.title}</h1>
               <div className="flex flex-wrap items-center gap-6 text-slate-400">
@@ -284,7 +280,7 @@ export default async function PublicJobPage({ params }: { params: Params }) {
                 <h4 className="text-sm">Secure assessment</h4>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                AegisHire uses secure session management. Your responses are stored safely and
+                hireLens uses secure session management. Your responses are stored safely and
                 shared only with the hiring team at {job.company_name}.
               </p>
             </div>
@@ -293,14 +289,9 @@ export default async function PublicJobPage({ params }: { params: Params }) {
       </main>
 
       <footer className="py-12 px-6 border-t border-white/10 bg-slate-950">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg text-white">AegisHire</span>
-          </div>
-          <p className="text-sm text-slate-500">© 2025 AegisHire Inc. All rights reserved.</p>
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+          <SiteLogo href="/" height={32} />
+          <p className="text-sm text-slate-500">© 2025 hireLens Inc. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="#" className="text-sm text-slate-500 hover:text-white transition-colors">
               Terms of Service

@@ -258,6 +258,16 @@ create index if not exists job_applications_user_id_idx on public.job_applicatio
 create index if not exists job_applications_job_profile_id_idx on public.job_applications (job_profile_id);
 create index if not exists job_applications_status_idx on public.job_applications (status);
 
+-- Candidate saved jobs (bookmarks for job board)
+create table if not exists public.candidate_saved_jobs (
+  user_id uuid not null references public.users (id) on delete cascade,
+  job_profile_id uuid not null references public.job_profiles (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, job_profile_id)
+);
+create index if not exists candidate_saved_jobs_user_id_idx on public.candidate_saved_jobs (user_id);
+create index if not exists candidate_saved_jobs_job_profile_id_idx on public.candidate_saved_jobs (job_profile_id);
+
 -- Migrate from candidate_users: backfill users, set job_applications.user_id, drop candidate_users
 do $$
 begin

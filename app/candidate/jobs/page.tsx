@@ -2,10 +2,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { createServerSupabaseClient } from '@/lib/supabaseClient';
 import { AuthNav } from '@/components/auth-nav';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Shield, Briefcase, Building2, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { SiteLogo } from '@/components/site-logo';
+import { JobList } from './job-list';
 
 async function getPublishedJobsWithMyApplications(userId: string) {
   const supabase = createServerSupabaseClient();
@@ -46,6 +44,16 @@ async function getPublishedJobsWithMyApplications(userId: string) {
   return { jobs: jobList, applicationsByJobId };
 }
 
+async function getSavedJobIds(userId: string): Promise<Set<string>> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from('candidate_saved_jobs')
+    .select('job_profile_id')
+    .eq('user_id', userId);
+  if (error) return new Set();
+  return new Set((data ?? []).map((r: { job_profile_id: string }) => r.job_profile_id));
+}
+
 export default async function CandidateJobBoard() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -61,27 +69,28 @@ export default async function CandidateJobBoard() {
           .order('created_at', { ascending: false });
         return data ?? [];
       })(), applicationsByJobId: {} as Record<string, any> };
+  const savedJobIds = userId ? await getSavedJobIds(userId) : new Set<string>();
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
-        <div className="ml-auto flex items-center gap-4">
-          <Link href={userId ? `/candidate/${userId}` : '/login'} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
-            My applications
-          </Link>
-          <Link href="/candidate/jobs" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
-            Job board
-          </Link>
-          <Link href="/employer" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
-            For employers
-          </Link>
-          <AuthNav user={user} />
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <SiteLogo href={userId ? `/candidate/${userId}` : '/'} height={40} />
+        <div className="ml-auto flex items-center">
+          <nav className="flex items-center gap-6 text-sm">
+            {userId && (
+              <Link href={`/candidate/${userId}`} className="font-medium text-slate-400 hover:text-white transition-colors">
+                My applications
+              </Link>
+            )}
+            <Link href="/candidate/jobs" className="font-medium text-slate-400 hover:text-white transition-colors">
+              Job board
+            </Link>
+          </nav>
+          <AuthNav
+            user={user}
+            profileHref={userId ? `/candidate/${userId}/profile` : undefined}
+            settingsHref={userId ? `/candidate/${userId}/settings` : undefined}
+          />
         </div>
       </header>
 
@@ -93,96 +102,12 @@ export default async function CandidateJobBoard() {
           </p>
         </div>
 
-        <Card className="bg-slate-900/60 border-white/10">
-          <CardHeader>
-            <CardTitle className="text-white">Open roles</CardTitle>
-            <CardDescription className="text-slate-400">Roles published by employers on AegisHire.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {jobs.length === 0 ? (
-              <div className="py-10 text-sm text-slate-400 text-center">
-                No published jobs are available yet. Check back soon.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {jobs.map((job: any) => {
-                  const app = applicationsByJobId[job.id];
-                  const hasApplied = Boolean(app);
-                  const canContinue =
-                    app &&
-                    ['screening', 'in_interview'].includes(app.status);
-
-                  return (
-                    <div
-                      key={job.id}
-                      className="border border-white/10 rounded-lg bg-slate-800/40 p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="font-semibold text-lg text-white">{job.title}</h2>
-                          <Badge variant="outline" className="text-xs border-white/20 text-slate-300">
-                            {job.category || 'General'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-3 h-3" /> {job.company_name}
-                          </span>
-                          {job.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" /> {job.location}
-                            </span>
-                          )}
-                          {job.seniority && (
-                            <span className="flex items-center gap-1">
-                              <Briefcase className="w-3 h-3" /> {job.seniority}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Posted{' '}
-                            {new Date(job.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {userId ? (
-                          <Button
-                            variant={hasApplied ? 'outline' : 'default'}
-                            size="sm"
-                            asChild
-                            className={
-                              canContinue
-                                ? 'bg-blue-600 hover:bg-blue-500 text-white border-0'
-                                : hasApplied
-                                ? 'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white'
-                                : 'bg-blue-600 hover:bg-blue-500 text-white border-0'
-                            }
-                          >
-                            <Link href={`/candidate/${userId}/${job.id}`}>
-                              {canContinue ? (
-                                <>Continue <ArrowRight className="w-4 h-4 ml-1" /></>
-                              ) : hasApplied ? (
-                                'View application'
-                              ) : (
-                                'Apply'
-                              )}
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-500 text-white border-0">
-                            <Link href={`/login?next=/candidate/jobs`}>
-                              Sign in to apply
-                            </Link>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <JobList
+          jobs={jobs}
+          applicationsByJobId={applicationsByJobId}
+          savedJobIds={Array.from(savedJobIds)}
+          userId={userId}
+        />
       </main>
     </div>
   );

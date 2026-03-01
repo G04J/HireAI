@@ -261,6 +261,20 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['job_applications']['Insert']>;
       };
 
+      candidate_saved_jobs: {
+        Row: {
+          user_id: string;
+          job_profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          job_profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['candidate_saved_jobs']['Insert']>;
+      };
+
       // --- Interview sessions & stages ---
       interview_sessions: {
         Row: {

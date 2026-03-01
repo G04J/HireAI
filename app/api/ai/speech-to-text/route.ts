@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAuthClient } from '@/lib/supabase/server';
-import { speechToText } from '@/ai/flows/speech-to-text';
+
+const ELEVENLABS_STT_URL = 'https://api.elevenlabs.io/v1/speech-to-text';
+const STT_MODEL_ID = 'scribe_v2';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,14 +19,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'audio file is required' }, { status: 400 });
     }
 
-    const arrayBuffer = await audioFile.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const mimeType = audioFile.type || 'audio/webm';
-    const audioDataUri = `data:${mimeType};base64,${base64}`;
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey || apiKey === 'your_elevenlabs_api_key_here') {
+      return NextResponse.json(
+        { error: 'ElevenLabs API key not configured' },
+        { status: 500 }
+      );
+    }
 
-    const result = await speechToText({ audioDataUri });
+    const body = new FormData();
+    body.append('file', audioFile);
+    body.append('model_id', STT_MODEL_ID);
 
-    return NextResponse.json({ transcript: result.transcript });
+    const response = await fetch(ELEVENLABS_STT_URL, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('ElevenLabs STT API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Transcription failed', details: errorText },
+        { status: response.status }
+      );
+    }
+
+    const data = (await response.json()) as { text?: string };
+    const transcript = typeof data?.text === 'string' ? data.text.trim() : '';
+
+    return NextResponse.json({ transcript });
   } catch (err) {
     console.error('POST /api/ai/speech-to-text', err);
     return NextResponse.json(

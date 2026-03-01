@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { Shield } from 'lucide-react';
+import { SiteLogo } from '@/components/site-logo';
 
 export default function AuthLayout({
   children,
@@ -16,13 +15,10 @@ export default function AuthLayout({
       {/* Subtle grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:64px_64px]" />
       
-      <Link href="/" className="relative flex items-center gap-2 mb-8 group">
-        <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-          <Shield className="w-6 h-6" />
-        </div>
-        <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-      </Link>
-      <div className="relative w-full max-w-md">
+      <div className="relative">
+        <SiteLogo href="/" height={120} width={480} />
+      </div>
+      <div className="relative w-full max-w-md -mt-3">
         {children}
       </div>
     </div>

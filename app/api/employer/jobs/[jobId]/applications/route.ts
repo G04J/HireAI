@@ -47,11 +47,11 @@ export async function GET(
 
     const applicationIds = (apps ?? []).map((a) => a.id);
     const { data: reports } = applicationIds.length
-      ? await supabase.from('reports').select('application_id, recommendation, generated_at').in('application_id', applicationIds)
-      : { data: [] as { application_id: string; recommendation: string | null; generated_at: string }[] };
+      ? await supabase.from('reports').select('application_id, recommendation, overall_score, report_json, human_readable_report, generated_at').in('application_id', applicationIds)
+      : { data: [] as { application_id: string; recommendation: string | null; overall_score: number | null; report_json: any; human_readable_report: string | null; generated_at: string }[] };
 
-    const reportByApplicationId = (reports ?? []).reduce<Record<string, { recommendation: string | null; generated_at: string }>>((acc, r) => {
-      acc[r.application_id] = { recommendation: r.recommendation, generated_at: r.generated_at };
+    const reportByApplicationId = (reports ?? []).reduce<Record<string, { recommendation: string | null; overall_score: number | null; report_json: any; human_readable_report: string | null; generated_at: string }>>((acc, r) => {
+      acc[r.application_id] = { recommendation: r.recommendation, overall_score: r.overall_score, report_json: r.report_json, human_readable_report: r.human_readable_report, generated_at: r.generated_at };
       return acc;
     }, {});
 

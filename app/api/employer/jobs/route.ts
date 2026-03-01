@@ -116,11 +116,43 @@ export async function POST(req: NextRequest) {
       ? stages.map((s: any, index: number) => buildStageRow(s, index, profile.id))
       : [];
 
+    let insertedStages: { id: string; index: number }[] = [];
+
     if (stageRows.length > 0) {
-      const { error: stagesError } = await supabase.from('job_stages').insert(stageRows);
+      const { data: stageData, error: stagesError } = await supabase
+        .from('job_stages')
+        .insert(stageRows)
+        .select('id, index');
       if (stagesError) {
         console.error('Error creating job_stages', stagesError);
-        // Profile already created; optionally roll back or leave stages for later
+      }
+      insertedStages = stageData ?? [];
+    }
+
+    if (insertedStages.length > 0 && Array.isArray(stages)) {
+      const questionRows: any[] = [];
+      for (const inserted of insertedStages) {
+        const srcStage = stages[inserted.index];
+        const questions = srcStage?.questions ?? [];
+        for (const q of questions) {
+          questionRows.push({
+            employer_id: employerId,
+            job_stage_id: inserted.id,
+            job_profile_id: profile.id,
+            question_text: q.question ?? q.question_text,
+            difficulty: q.difficulty ?? null,
+            category: null,
+            mandatory: false,
+          });
+        }
+      }
+      if (questionRows.length > 0) {
+        const { error: qError } = await supabase
+          .from('stage_question_bank')
+          .insert(questionRows);
+        if (qError) {
+          console.error('Error saving stage questions', qError);
+        }
       }
     }
 

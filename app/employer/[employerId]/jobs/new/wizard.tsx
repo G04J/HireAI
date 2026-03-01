@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SiteLogo } from '@/components/site-logo';
 import {
-  Shield,
   ChevronRight,
   ChevronLeft,
   Plus,
@@ -36,9 +36,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 
-export function NewJobWizard({ employerId }: { employerId: string }) {
+const DRAFT_KEY = 'post-a-job-draft';
+
+export function NewJobWizard({ employerId }: { employerId: string | null }) {
+  const isGuest = employerId == null;
   const [step, setStep] = useState(1);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [jobData, setJobData] = useState({
@@ -62,6 +66,21 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
     },
   ]);
 
+  // Restore draft after login when coming from post-a-job
+  useEffect(() => {
+    if (isGuest || typeof window === 'undefined') return;
+    if (searchParams.get('restore') !== '1') return;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const { jobData: savedJob, stages: savedStages } = JSON.parse(raw);
+      if (savedJob && typeof savedJob === 'object') setJobData((prev) => ({ ...prev, ...savedJob }));
+      if (Array.isArray(savedStages) && savedStages.length > 0) setStages(savedStages);
+      sessionStorage.removeItem(DRAFT_KEY);
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch (_) {}
+  }, [isGuest, searchParams]);
+
   const addSkill = () => {
     if (jobData.newSkill && !jobData.mustHaveSkills.includes(jobData.newSkill)) {
       setJobData({ ...jobData, mustHaveSkills: [...jobData.mustHaveSkills, jobData.newSkill], newSkill: '' });
@@ -83,7 +102,7 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
   };
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState<'draft' | 'published' | null>(null);
 
   const generateQuestionsForStage = async (index: number) => {
     setIsGenerating(true);
@@ -102,12 +121,19 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
     }
   };
 
-  const handleFinish = async () => {
+  const handleFinish = async (publishState: 'draft' | 'published') => {
     if (!jobData.title || !jobData.company || !jobData.description) {
       toast({ title: 'Missing fields', description: 'Please complete title, company, and description.', variant: 'destructive' });
       return;
     }
-    setIsSaving(true);
+    if (isGuest) {
+      try {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ jobData, stages }));
+      } catch (_) {}
+      router.push('/login?next=/post-a-job/continue');
+      return;
+    }
+    setSavingMode(publishState);
     try {
       const res = await fetch('/api/employer/jobs', {
         method: 'POST',
@@ -120,8 +146,15 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
           description: jobData.description,
           seniority: jobData.seniority,
           mustHaveSkills: jobData.mustHaveSkills,
-          publishState: 'draft',
-          stages: stages.map((s) => ({ type: s.type, focusAreas: s.focusAreas, aiAllowed: s.aiAllowed, voicePreset: s.voice })),
+          publishState,
+          stages: stages.map((s) => ({
+            type: s.type,
+            focusAreas: s.focusAreas,
+            aiAllowed: s.aiAllowed,
+            voicePreset: s.voice,
+            questions: s.questions ?? [],
+            questionSource: (s.questions?.length ?? 0) > 0 ? 'employer_only' : 'ai_only',
+          })),
         }),
       });
 
@@ -136,26 +169,24 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
         throw new Error((err as any).error || 'Failed to save job');
       }
 
-      const { jobId } = await res.json();
-      toast({ title: 'Pipeline saved', description: 'Job profile created. Publish it to go live.' });
-      router.push(jobId ? `/employer/${employerId}/${jobId}` : `/employer/${employerId}`);
+      if (publishState === 'published') {
+        toast({ title: 'Job published', description: 'Your job is live on the job board.' });
+      } else {
+        toast({ title: 'Draft saved', description: 'You can publish it from the dashboard when ready.' });
+      }
+      router.push(`/employer/${employerId}`);
     } catch (error) {
       console.error(error);
       toast({ title: 'Error', description: 'Failed to save job profile. Please try again.', variant: 'destructive' });
     } finally {
-      setIsSaving(false);
+      setSavingMode(null);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 pb-20 text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-        <Link href={`/employer/${employerId}`} className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <SiteLogo href={isGuest ? '/' : `/employer/${employerId}`} height={40} />
         <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
           Step {step} of 2
         </div>
@@ -330,9 +361,23 @@ export function NewJobWizard({ employerId }: { employerId: string }) {
               <Button variant="outline" onClick={() => setStep(1)} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white">
                 <ChevronLeft className="mr-2 w-4 h-4" /> Job Details
               </Button>
-              <Button onClick={handleFinish} className="gap-2 bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30" disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save & Go to Job'} <MonitorPlay className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handleFinish('draft')}
+                  className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  disabled={savingMode !== null}
+                >
+                  {savingMode === 'draft' ? 'Saving...' : 'Save as draft'}
+                </Button>
+                <Button
+                  onClick={() => handleFinish('published')}
+                  className="gap-2 bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-600/30"
+                  disabled={savingMode !== null}
+                >
+                  {savingMode === 'published' ? 'Publishing...' : 'Publish'} <MonitorPlay className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}

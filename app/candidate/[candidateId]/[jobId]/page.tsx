@@ -12,8 +12,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SiteLogo } from '@/components/site-logo';
 import {
-  Shield,
   Briefcase,
   MapPin,
   Clock,
@@ -22,6 +22,7 @@ import {
   Volume2,
   ChevronRight,
   AlertCircle,
+  Shield,
 } from 'lucide-react';
 import { StartInterviewButton } from './start-interview-button';
 import { ApplyButton } from './apply-button';
@@ -135,11 +136,6 @@ export default async function CandidateJobLanding({
     return <ApplyView candidateId={candidateId} jobId={jobId} job={job} stages={stages} />;
   }
 
-  const isCompleted = application.status === 'completed';
-  const isRejected = ['rejected', 'withdrawn'].includes(application.status);
-  const canStart = !isCompleted && !isRejected;
-
-  // Check if an active session already exists so we can resume it
   const supabase = createServerSupabaseClient();
   const { data: existingSession } = await supabase
     .from('interview_sessions')
@@ -150,21 +146,32 @@ export default async function CandidateJobLanding({
     .limit(1)
     .maybeSingle();
 
-  const resumeSessionId = existingSession?.id ?? null;
+  // If they started the interview but left midway, count it as submitted (no resume).
+  if (existingSession?.id) {
+    const now = new Date().toISOString();
+    await supabase
+      .from('job_applications')
+      .update({ status: 'completed', updated_at: now })
+      .eq('id', application.id);
+    await supabase
+      .from('interview_sessions')
+      .update({ status: 'abandoned' })
+      .eq('id', existingSession.id);
+  }
+
+  const isCompleted = application.status === 'completed' || Boolean(existingSession?.id);
+  const isRejected = ['rejected', 'withdrawn'].includes(application.status);
+  const canStart = !isCompleted && !isRejected;
+  const resumeSessionId = null; // Never allow resume; leaving midway counts as submitted.
 
   const totalMinutes = stages.reduce((sum, s) => sum + (s.duration_minutes ?? 15), 0) || stages.length * 15;
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
-        <nav className="ml-auto flex items-center gap-4 text-sm text-slate-400">
-          <Link href={`/candidate/${candidateId}`} className="hover:text-white transition-colors">
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <SiteLogo href={`/candidate/${candidateId}`} height={40} />
+        <nav className="ml-auto flex items-center gap-6 text-sm">
+          <Link href={`/candidate/${candidateId}`} className="font-medium text-slate-400 hover:text-white transition-colors">
             My applications
           </Link>
         </nav>
@@ -175,7 +182,7 @@ export default async function CandidateJobLanding({
           <div className="space-y-8">
             <div className="space-y-4">
               <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
-                Hiring via AegisHire AI
+                Hiring via hireLens AI
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight text-white">{job.title}</h1>
               <div className="flex flex-wrap items-center gap-6 text-slate-400">
@@ -245,7 +252,7 @@ export default async function CandidateJobLanding({
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-slate-300 leading-relaxed">
-                    AegisHire uses advanced artificial intelligence to conduct fair, efficient, and interactive interviews.
+                    hireLens uses advanced artificial intelligence to conduct fair, efficient, and interactive interviews.
                     This process allows you to showcase your skills through behavioral questions, technical simulations,
                     and real-world scenarios.
                   </p>
@@ -399,7 +406,7 @@ export default async function CandidateJobLanding({
                 <h4 className="text-sm">Secure Assessment</h4>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                AegisHire uses secure session management to protect your information and ensure a fair screening process.
+                hireLens uses secure session management to protect your information and ensure a fair screening process.
                 Your responses are stored safely.
               </p>
             </div>
@@ -408,14 +415,9 @@ export default async function CandidateJobLanding({
       </main>
 
       <footer className="py-12 px-6 border-t border-white/10 bg-slate-950">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg text-white">AegisHire</span>
-          </div>
-          <p className="text-sm text-slate-500">© 2025 AegisHire Inc. All rights reserved.</p>
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+          <SiteLogo href={`/candidate/${candidateId}`} height={32} />
+          <p className="text-sm text-slate-500">© 2025 hireLens Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>
@@ -437,15 +439,10 @@ function ApplyView({
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col text-white">
-      <header className="px-6 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
-        <Link href={`/candidate/${candidateId}`} className="flex items-center gap-2 group">
-          <div className="p-2 bg-blue-600 rounded-xl text-white group-hover:scale-105 transition-transform shadow-lg shadow-blue-600/40">
-            <Shield className="w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">AegisHire</span>
-        </Link>
-        <nav className="ml-auto flex items-center gap-4 text-sm text-slate-400">
-          <Link href={`/candidate/${candidateId}`} className="hover:text-white transition-colors">
+      <header className="px-3 h-20 flex items-center border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <SiteLogo href={`/candidate/${candidateId}`} height={40} />
+        <nav className="ml-auto flex items-center gap-6 text-sm">
+          <Link href={`/candidate/${candidateId}`} className="font-medium text-slate-400 hover:text-white transition-colors">
             My applications
           </Link>
         </nav>
@@ -455,7 +452,7 @@ function ApplyView({
         <div className="space-y-8">
           <div className="space-y-4">
             <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
-              Hiring via AegisHire AI
+              Hiring via hireLens AI
             </Badge>
             <h1 className="text-4xl font-extrabold tracking-tight text-white">{job.title}</h1>
             <div className="flex flex-wrap items-center gap-6 text-slate-400">
@@ -512,11 +509,13 @@ function ApplyView({
                 </div>
               )}
             </CardContent>
-            <CardFooter className="bg-blue-600/10 border-t border-white/10 p-6 flex items-center justify-between">
-              <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-cyan-400" />
-                Submit your application to begin.
-              </p>
+            <CardFooter className="bg-blue-600/10 border-t border-white/10 p-6 flex flex-col gap-4">
+              <div className="flex items-center justify-between w-full">
+                <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-cyan-400" />
+                  We&apos;ll assess your fit before proceeding.
+                </p>
+              </div>
               <ApplyButton jobId={jobId} candidateId={candidateId} />
             </CardFooter>
           </Card>

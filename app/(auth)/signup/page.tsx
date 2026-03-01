@@ -67,7 +67,7 @@ export default function SignUpPage() {
     if (syncedRole === 'employer' && employerId) {
       router.push(`/employer/${employerId}`);
     } else if (syncedRole === 'candidate' && candidateId) {
-      router.push(`/candidate/${candidateId}`);
+      router.push(`/candidate/${candidateId}/profile`);
     } else {
       router.push('/');
     }
@@ -78,7 +78,7 @@ export default function SignUpPage() {
     <Card className="bg-slate-900/80 border-white/10 backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="text-white">Create an account</CardTitle>
-        <CardDescription className="text-slate-400">Sign up and choose how you&apos;ll use AegisHire.</CardDescription>
+        <CardDescription className="text-slate-400">Sign up and choose how you&apos;ll use hireLens.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">

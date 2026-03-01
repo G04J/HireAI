@@ -24,7 +24,7 @@ export async function GET(
         .maybeSingle(),
       supabase
         .from('job_stages')
-        .select('id, index, type, competencies, duration_minutes, ai_usage_policy')
+        .select('id, index, type, competencies, duration_minutes, ai_usage_policy, question_source')
         .eq('job_profile_id', jobId)
         .order('index', { ascending: true }),
     ]);
@@ -58,7 +58,36 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ job, stages: stagesRes.data ?? [] });
+    const stages = stagesRes.data ?? [];
+    const stageIds = stages.map((s: any) => s.id);
+
+    let questionsByStage: Record<string, any[]> = {};
+    if (stageIds.length > 0) {
+      const { data: questions } = await supabase
+        .from('stage_question_bank')
+        .select('id, job_stage_id, question_text, difficulty, mandatory')
+        .in('job_stage_id', stageIds)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true });
+
+      for (const q of questions ?? []) {
+        const sid = q.job_stage_id;
+        if (!questionsByStage[sid]) questionsByStage[sid] = [];
+        questionsByStage[sid].push({
+          question: q.question_text,
+          difficulty: q.difficulty ?? 'medium',
+          mandatory: q.mandatory,
+          id: q.id,
+        });
+      }
+    }
+
+    const stagesWithQuestions = stages.map((s: any) => ({
+      ...s,
+      questions: questionsByStage[s.id] ?? [],
+    }));
+
+    return NextResponse.json({ job, stages: stagesWithQuestions });
   } catch (err) {
     console.error('GET /api/jobs/[jobId]', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });

@@ -1,0 +1,240 @@
+# Aegishre
+
+**AI-native recruitment and multi-stage interview platform.** Employers create jobs with stages and policies; candidates apply and complete structured interviews with AI-driven dialogue, focus monitoring, and automated scoring. Built with Next.js, Supabase, Genkit/Mistral, and ElevenLabs.
+
+---
+
+## Features
+
+- **Employer**
+  - Post jobs with multi-stage workflows (Overview → Stages → Question Bank → Distribution).
+  - Job wizard: create job profiles, define stages, attach question banks, manage distribution status.
+  - View candidates per job, start interview sessions, and access candidate reports (heatmap, stage breakdowns, AI collaboration, integrity).
+  - Distribution tab: job distribution status and payloads.
+
+- **Candidate**
+  - Browse job board and apply to jobs (applications stored in `job_applications`).
+  - Save jobs; manage profile and settings.
+  - Join interview room: mic/speaker/camera checks, fullscreen when required by policy.
+  - AI interviewer: TTS (ElevenLabs), STT, question/answer flow, follow-up generation, scoring.
+  - Focus monitoring with configurable policies (relaxed/moderate/strict/exam); events persisted to `focus_events`.
+  - Resume fit scoring (embeddings + Mistral); gating on Eligible/Borderline for interview access.
+  - Session persistence so refresh or another device can resume.
+
+- **AI & tools**
+  - Genkit + Mistral: rubric/stage plan generation, question generation, resume fit, scoring.
+  - Tools panel in interview sidebar; tool usage logged to `tool_usage_logs`.
+  - Stage and question scores stored in `stage_scores` and `question_scores`.
+
+- **Auth & roles**
+  - Supabase Auth; `user_roles` (employer/candidate); `employer_profiles`; role-based redirects after login.
+
+---
+
+## Tech stack
+
+| Layer        | Technology |
+|-------------|------------|
+| Framework   | Next.js 15 (App Router, Turbopack) |
+| UI          | React 18, Tailwind CSS, Radix UI, Lucide icons |
+| Backend     | Next.js API routes, Supabase (Postgres + Auth) |
+| AI          | Genkit, Mistral (genkitx-mistral), custom flows |
+| Voice       | ElevenLabs (TTS), STT API |
+| Forms       | react-hook-form |
+| Charts      | Recharts |
+| PDF/export  | jspdf, html2canvas-pro |
+| Tests       | Vitest |
+
+---
+
+## Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Supabase project ([supabase.com](https://supabase.com))
+- [Mistral API key](https://console.mistral.ai/api-keys)
+- [ElevenLabs API key](https://elevenlabs.io) (for TTS in interview room)
+
+---
+
+## Setup
+
+### 1. Clone and install
+
+```bash
+git clone <repo-url>
+cd src
+npm install
+```
+
+### 2. Environment variables
+
+Create `.env.local` in the project root (and optionally `.env` for non-secrets).
+
+**Required for Supabase (auth + database):**
+
+```env
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+**Required for AI / voice features:**
+
+```env
+# Mistral (Genkit, resume fit, scoring, dialogue)
+MISTRAL_API_KEY=your_mistral_key
+
+# ElevenLabs (interview TTS)
+ELEVENLABS_API_KEY=your_elevenlabs_key
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+```
+
+Get Supabase keys from **Project Settings → API**. Never commit real keys; use `.env.local` and add it to `.gitignore`.
+
+### 3. Database schema
+
+Apply the Supabase schema (e.g. `supabase-schema.sql` or migrations in `database/migrations/`) in the Supabase SQL Editor so all required tables exist.
+
+Then verify:
+
+```bash
+npm run db:verify
+```
+
+This checks that tables such as `users`, `user_roles`, `employer_profiles`, `job_profiles`, `job_stages`, `stage_question_bank`, `job_distribution_status`, `public_job_views`, `job_applications`, `focus_events`, `interview_sessions`, `tool_usage_logs`, `stage_scores`, `question_scores` exist and are readable.
+
+### 4. Run migrations (if any)
+
+```bash
+npm run db:migrate:saved-jobs
+```
+
+(Add other migration scripts as you add them.)
+
+### 5. Start the app
+
+```bash
+npm run dev
+```
+
+App runs at **http://localhost:9002**.
+
+---
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Next.js dev server with Turbopack on port 9002 |
+| `npm run build` | Production build |
+| `npm run start` | Start production server (port 9002) |
+| `npm run lint` | Next.js ESLint |
+| `npm run test` | Run Vitest once |
+| `npm run test:watch` | Vitest watch mode |
+| `npm run db:verify` | Verify Supabase connection and required tables |
+| `npm run db:migrate:saved-jobs` | Run saved-jobs migration |
+| `npm run genkit:dev` | Genkit dev server (AI flows) |
+| `npm run genkit:flow` | Run Genkit flow |
+
+---
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── (auth)/           # Login, signup
+│   ├── api/              # API routes
+│   │   ├── ai/           # TTS, STT, dialogue, questions, scoring
+│   │   ├── auth/         # Auth sync
+│   │   ├── candidate/    # Profile, saved jobs, persona, confidence
+│   │   ├── candidates/   # Candidate creation
+│   │   ├── employer/     # Jobs, applications, reports, distribution
+│   │   ├── jobs/         # Job CRUD, apply
+│   │   ├── applications/ # Application session start, resume-fit
+│   │   ├── sessions/     # Interview session, stages, answers, focus, tools, complete
+│   │   └── health/       # DB health check
+│   ├── candidate/        # Job list, profile, interview, completed, settings
+│   ├── employer/         # Dashboard, jobs (new, detail), job wizard
+│   ├── jobs/             # Public job view by publicId
+│   ├── jobBoard/         # Job board
+│   ├── post-a-job/       # Post job flow
+│   ├── lib/              # App-level utilities
+│   └── page.tsx          # Home (role-based redirect)
+├── components/           # Shared UI (auth-nav, pipeline-demo, site-logo, ui/)
+├── frontend/
+│   ├── components/       # Additional components
+│   └── hooks/            # Shared hooks
+├── database/
+│   ├── migrations/       # SQL migrations (e.g. add-candidate-saved-jobs.sql)
+│   ├── verify-db.mjs     # DB verification script
+│   └── run-migration-saved-jobs.mjs
+├── src/                  # Genkit AI source (e.g. dev.ts, flows)
+├── tests/                # Vitest API tests
+├── public/               # Static assets (e.g. logos)
+├── .env                  # Optional env (e.g. API keys for AI/voice)
+├── .env.local            # Supabase + secrets (do not commit)
+└── package.json
+```
+
+---
+
+## API overview
+
+- **Auth:** `POST /api/auth/sync` — sync user/roles after login.
+- **Jobs:** `GET/POST /api/jobs`, `GET/PATCH /api/jobs/[jobId]`, `POST /api/jobs/[jobId]/apply`.
+- **Employer:** `GET/POST /api/employer/jobs`, `GET/PATCH /api/employer/jobs/[jobId]`, `GET /api/employer/jobs/[jobId]/applications`, `GET /api/employer/jobs/[jobId]/distribution`, `GET /api/employer/applications/[applicationId]/report`.
+- **Candidate:** `GET/POST /api/candidate/profile`, `GET/POST/DELETE /api/candidate/saved-jobs`, `GET /api/candidate/saved-jobs/[jobId]`.
+- **Applications:** `POST /api/applications/[applicationId]/session/start`, `POST /api/applications/[applicationId]/resume-fit`.
+- **Sessions:** `GET/PATCH /api/sessions/[sessionId]`, `POST /api/sessions/[sessionId]/complete`, `POST /api/sessions/[sessionId]/abandon`, focus-event, stages/next, stages/[stageSessionId]/question, answer, case, code, tool-usage.
+- **AI:** `POST /api/ai/text-to-speech`, `POST /api/ai/speech-to-text`, `POST /api/ai/interviewer-dialogue`, `POST /api/ai/generate-followup`, `POST /api/ai/generate-questions`, `POST /api/ai/score-answer`.
+- **Health:** `GET /api/health/db`.
+
+---
+
+## Database (Supabase)
+
+Core tables used by the app (see `database/verify-db.mjs` and schema SQL):
+
+- **Identity & roles:** `users`, `user_roles`, `employer_profiles`
+- **Jobs:** `job_profiles`, `job_stages`, `stage_question_bank`, `job_distribution_status`, `public_job_views`
+- **Candidates:** `job_applications`, `candidates` (if still used)
+- **Interview:** `interview_sessions`, `focus_events`, `tool_usage_logs`, `stage_scores`, `question_scores`
+- **Reports:** `reports` (optional, for employer report generation)
+
+Run `npm run db:verify` after applying schema to confirm all required tables exist.
+
+---
+
+## Roadmap and gaps
+
+See **`improvements.md`** for:
+
+- Distribution lifecycle (update/close flows, demo seeding).
+- Job builder UX (stepper/tabs: Overview, Stages, Question Bank, Distribution).
+- Candidate apply flow aligned with `job_applications` and real job profile.
+- Employer job detail: real candidates list and report links.
+- Interview: join flow, meeting layout, speech pipeline, focus policies, session persistence.
+- AI: rubric/stage plan, question engine, resume fit, tools panel, scoring.
+- Reports and distribution UI, plus end-to-end demo seeding.
+
+---
+
+## Tests
+
+```bash
+npm run test
+npm run test:watch
+```
+
+API tests live under `tests/` (e.g. `tests/api/jobs-apply.test.ts`, `applications-session-start.test.ts`, `sessions-complete.test.ts`, `employer-applications.test.ts`, `employer-report.test.ts`). See `tests/README.md` for details.
+
+---
+
+## License
+
+Private. All rights reserved.

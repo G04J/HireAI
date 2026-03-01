@@ -9,8 +9,6 @@ const MODELS = {
   turbo: 'eleven_turbo_v2_5', // ~250ms latency - higher quality for longer content
 } as const;
 
-type ModelType = keyof typeof MODELS;
-
 export async function POST(req: NextRequest) {
   try {
     const auth = await createAuthClient();
@@ -20,9 +18,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { text, voiceId, model } = body;
+    const { text, voiceId, model, stream: useStream } = body;
 
-    console.log('[API text-to-speech] request', { textLen: typeof text === 'string' ? text.length : 0, preview: typeof text === 'string' ? text.slice(0, 60) : '' });
+    console.log('[API text-to-speech] request', { textLen: typeof text === 'string' ? text.length : 0, stream: !!useStream, preview: typeof text === 'string' ? text.slice(0, 60) : '' });
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'text is required' }, { status: 400 });
@@ -38,6 +36,43 @@ export async function POST(req: NextRequest) {
 
     const selectedVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
     const selectedModel = model === 'turbo' ? MODELS.turbo : MODELS.flash;
+
+    if (useStream) {
+      const streamUrl = `${ELEVENLABS_API_URL}/${selectedVoiceId}/stream?optimize_streaming_latency=2&output_format=mp3_22050_32`;
+      const response = await fetch(streamUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          text,
+          model_id: selectedModel,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('ElevenLabs stream API error:', response.status, errorText);
+        return NextResponse.json(
+          { error: 'Failed to generate speech', details: errorText },
+          { status: response.status }
+        );
+      }
+
+      return new NextResponse(response.body ?? null, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Transfer-Encoding': 'chunked',
+        },
+      });
+    }
 
     const response = await fetch(`${ELEVENLABS_API_URL}/${selectedVoiceId}`, {
       method: 'POST',

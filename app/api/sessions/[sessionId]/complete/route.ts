@@ -36,6 +36,12 @@ export async function POST(
       return NextResponse.json({ error: 'Session is not linked to an application' }, { status: 400 });
     }
 
+    const { data: application } = await supabase
+      .from('job_applications')
+      .select('fit_score, matched_skills, missing_skills, resume_text')
+      .eq('id', session.application_id)
+      .maybeSingle();
+
     const { data: job } = await supabase
       .from('job_profiles')
       .select('id, title, company_name, description, seniority, must_have_skills')
@@ -81,6 +87,27 @@ export async function POST(
     };
 
     const userEmail = user.email ?? '';
+    const appFitScore = application?.fit_score != null ? Number(application.fit_score) : null;
+    const appMatched = application?.matched_skills ?? [];
+    const appMissing = application?.missing_skills ?? [];
+    const useApplicationResumeFit =
+      (resumeFitCheckResult == null || typeof resumeFitCheckResult?.fitScore !== 'number') &&
+      appFitScore != null;
+
+    const resumeFit = useApplicationResumeFit
+      ? {
+          fitScore: Math.min(100, Math.max(0, appFitScore)),
+          matchedSkills: Array.isArray(appMatched) ? appMatched : [],
+          missingSkills: Array.isArray(appMissing) ? appMissing : [],
+          justification: '',
+        }
+      : {
+          fitScore: resumeFitCheckResult?.fitScore ?? 0,
+          matchedSkills: resumeFitCheckResult?.matchedSkills ?? [],
+          missingSkills: resumeFitCheckResult?.missingSkills ?? [],
+          justification: resumeFitCheckResult?.justification ?? '',
+        };
+
     const input: GenerateEvaluationReportInput = {
       jobProfile,
       candidateData: {
@@ -88,14 +115,9 @@ export async function POST(
         email: candidateData?.email ?? userEmail,
         education: candidateData?.education ?? '',
         experienceSummary: candidateData?.experienceSummary ?? '',
-        resumeText: candidateData?.resumeText ?? '',
+        resumeText: candidateData?.resumeText ?? application?.resume_text ?? '',
       },
-      resumeFitCheckResult: {
-        fitScore: resumeFitCheckResult?.fitScore ?? 0,
-        matchedSkills: resumeFitCheckResult?.matchedSkills ?? [],
-        missingSkills: resumeFitCheckResult?.missingSkills ?? [],
-        justification: resumeFitCheckResult?.justification ?? '',
-      },
+      resumeFitCheckResult: resumeFit,
       stageResults,
     };
 

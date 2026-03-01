@@ -291,7 +291,7 @@ export default async function CompletedPage({
             </Card>
           )}
 
-          {resumeAnalysis && (
+          {resumeAnalysis != null && (
             <Card className="bg-slate-900/60 border-white/10">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
@@ -304,35 +304,36 @@ export default async function CompletedPage({
                   <span className="text-slate-400">Resume Fit Score</span>
                   <span className="text-2xl font-bold text-white">{resumeAnalysis.fitScore ?? 0}/100</span>
                 </div>
-                <Progress value={resumeAnalysis.fitScore ?? 0} className="h-2 bg-slate-700" />
-                
-                {resumeAnalysis.matchedSkills && resumeAnalysis.matchedSkills.length > 0 && (
+                <Progress value={Math.min(100, Math.max(0, resumeAnalysis.fitScore ?? 0))} className="h-2 bg-slate-700" />
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-sm font-medium text-slate-400 mb-2">Matched Skills</p>
                     <div className="flex flex-wrap gap-1">
-                      {resumeAnalysis.matchedSkills.map((skill, i) => (
-                        <Badge key={i} variant="outline" className="text-xs bg-green-500/10 border-green-500/30 text-green-400">
-                          {skill}
-                        </Badge>
-                      ))}
+                      {(resumeAnalysis.matchedSkills ?? []).length > 0
+                        ? (resumeAnalysis.matchedSkills ?? []).map((skill, i) => (
+                            <Badge key={i} variant="outline" className="text-xs bg-green-500/10 border-green-500/30 text-green-400">
+                              {skill}
+                            </Badge>
+                          ))
+                        : <span className="text-xs text-slate-500">None identified</span>}
                     </div>
                   </div>
-                )}
-                {resumeAnalysis.missingSkills && resumeAnalysis.missingSkills.length > 0 && (
                   <div>
                     <p className="text-sm font-medium text-slate-400 mb-2">Missing Skills</p>
                     <div className="flex flex-wrap gap-1">
-                      {resumeAnalysis.missingSkills.map((skill, i) => (
-                        <Badge key={i} variant="outline" className="text-xs bg-red-500/10 border-red-500/30 text-red-400">
-                          {skill}
-                        </Badge>
-                      ))}
+                      {(resumeAnalysis.missingSkills ?? []).length > 0
+                        ? (resumeAnalysis.missingSkills ?? []).map((skill, i) => (
+                            <Badge key={i} variant="outline" className="text-xs bg-red-500/10 border-red-500/30 text-red-400">
+                              {skill}
+                            </Badge>
+                          ))
+                        : <span className="text-xs text-slate-500">None</span>}
                     </div>
                   </div>
-                )}
-                {resumeAnalysis.justification && (
-                  <p className="text-sm text-slate-400 pt-2 border-t border-white/10">{resumeAnalysis.justification}</p>
-                )}
+                </div>
+                <p className="text-sm text-slate-400 pt-2 border-t border-white/10">
+                  {resumeAnalysis.justification?.trim() || 'Your resume was evaluated against the job requirements.'}
+                </p>
               </CardContent>
             </Card>
           )}

@@ -67,6 +67,12 @@ const STAGE_LABELS: Record<string, string> = {
 
 const TARGET_FOLLOWUPS = 3;
 
+/** Pause before AI speaks (ms). Reduce for snappier flow; increase for more natural pacing. */
+const QUESTION_PAUSE_MS = typeof process.env.NEXT_PUBLIC_INTERVIEW_QUESTION_PAUSE_MS === 'string'
+  ? Math.max(0, parseInt(process.env.NEXT_PUBLIC_INTERVIEW_QUESTION_PAUSE_MS, 10) || 300)
+  : 300;
+const WELCOME_PAUSE_MS = Math.max(0, Math.min(QUESTION_PAUSE_MS + 100, 500));
+
 const FILLERS = [
   'Mm-hmm, okay.',
   "That's interesting.",
@@ -156,6 +162,10 @@ export default function InterviewPage({
   const aiCtxRef = useRef<AudioContext | null>(null);
   const aiRafRef = useRef(0);
 
+  /** Prefetched TTS for the next question (speaker/listener overlap). Cleared when used or on cleanup. */
+  const prefetchedTtsRef = useRef<{ text: string; url: string } | null>(null);
+  const prefetchAbortRef = useRef<AbortController | null>(null);
+
   /* ---- hooks ---- */
   const mic = useContinuousMic();
   const camera = useCamera();
@@ -207,15 +217,16 @@ export default function InterviewPage({
     } catch {}
   }, []);
 
-  const speakText = useCallback((text: string): Promise<void> => {
-    console.log('[Interview] speakText called', { len: text?.length, preview: text?.slice(0, 80) });
+  const speakText = useCallback((text: string, options?: { stream?: boolean }): Promise<void> => {
+    const useStream = options?.stream !== false;
+    console.log('[Interview] speakText called', { len: text?.length, stream: useStream, preview: text?.slice(0, 80) });
     return new Promise(async (resolve) => {
       try {
         const res = await fetch('/api/ai/text-to-speech', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, stream: useStream }),
         });
         if (!res.ok) { resolve(); return; }
         const blob = await res.blob();
@@ -232,6 +243,56 @@ export default function InterviewPage({
       } catch { resolve(); }
     });
   }, [ensureAiAnalyser]);
+
+  /** Prefetch TTS for text in the background (for next question). Only one prefetch in flight; cancels previous. */
+  const prefetchTts = useCallback((text: string) => {
+    if (!text?.trim()) return;
+    prefetchAbortRef.current?.abort();
+    prefetchAbortRef.current = new AbortController();
+    const ac = prefetchAbortRef.current;
+    (async () => {
+      try {
+        const res = await fetch('/api/ai/text-to-speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ text, stream: false }),
+          signal: ac.signal,
+        });
+        if (!res.ok || ac.signal.aborted) return;
+        const blob = await res.blob();
+        if (ac.signal.aborted) return;
+        const prev = prefetchedTtsRef.current;
+        if (prev) URL.revokeObjectURL(prev.url);
+        prefetchedTtsRef.current = { text, url: URL.createObjectURL(blob) };
+      } catch {
+        /* on abort or failure, leave existing prefetch as-is */
+      } finally {
+        if (prefetchAbortRef.current === ac) prefetchAbortRef.current = null;
+      }
+    })();
+  }, []);
+
+  /** Play prefetched audio if it matches text; otherwise call speakText. */
+  const playPrefetchedOrSpeak = useCallback((text: string): Promise<void> => {
+    const prefetched = prefetchedTtsRef.current;
+    if (prefetched && prefetched.text === text) {
+      prefetchedTtsRef.current = null;
+      return new Promise((resolve) => {
+        const audio = audioRef.current;
+        if (!audio) { resolve(); return; }
+        ensureAiAnalyser();
+        if (aiCtxRef.current?.state === 'suspended') aiCtxRef.current.resume().catch(() => {});
+        audio.src = prefetched.url;
+        audio.onended = () => { URL.revokeObjectURL(prefetched.url); resolve(); };
+        audio.onerror = () => { URL.revokeObjectURL(prefetched.url); resolve(); };
+        audio.play().catch(() => resolve());
+      });
+    }
+    if (prefetched) URL.revokeObjectURL(prefetched.url);
+    prefetchedTtsRef.current = null;
+    return speakText(text);
+  }, [ensureAiAnalyser, speakText]);
 
   const transcribe = useCallback(async (blob: Blob): Promise<string> => {
     const fd = new FormData();
@@ -467,7 +528,7 @@ export default function InterviewPage({
 
         /* ---- welcome (intro + first question: tell me about yourself) ---- */
         const welcomeText = await dialogue('welcome', {}, job);
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise(r => setTimeout(r, WELCOME_PAUSE_MS));
         setQuestionText(welcomeText);
         setPhase('ai_speaking');
         await speakText(welcomeText);
@@ -551,13 +612,12 @@ export default function InterviewPage({
             setCurrentQIdx(qIdx);
             setProcessingLabel('');
 
-            /* speak question — reveal text only as AI starts speaking */
+            /* speak question — use prefetched TTS if available (speaker/listener overlap) */
             setQuestionText('');
             setPhase('ai_speaking');
-            // brief pause so the transition feels natural
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, QUESTION_PAUSE_MS));
             setQuestionText(q.question);
-            await speakText(q.question);
+            await playPrefetchedOrSpeak(q.question);
             if (stale()) return;
 
             /* listen for answer */
@@ -594,6 +654,10 @@ export default function InterviewPage({
 
             if (!transcript.trim()) transcript = '[No response detected]';
 
+            /* Prefetch TTS for next base question while we score (speaker/listener overlap) */
+            const nextQuestionText = qIdx + 1 < questions.length ? questions[qIdx + 1].question : null;
+            if (nextQuestionText) prefetchTts(nextQuestionText);
+
             const score = await scoreAnswer(q.question, transcript, job, stage);
 
             if (stageSessionId) {
@@ -626,7 +690,7 @@ export default function InterviewPage({
 
                 setQuestionText('');
                 setPhase('ai_speaking');
-                await new Promise(r => setTimeout(r, 600));
+                await new Promise(r => setTimeout(r, QUESTION_PAUSE_MS));
                 setQuestionText(fuQ);
                 await speakText(fuQ);
                 if (stale()) return;
@@ -698,6 +762,12 @@ export default function InterviewPage({
       console.log('[Interview] effect cleanup', { generationRefBefore: generationRef.current });
       generationRef.current++;
       abortRef.current = true;
+      prefetchAbortRef.current?.abort();
+      const p = prefetchedTtsRef.current;
+      if (p) {
+        URL.revokeObjectURL(p.url);
+        prefetchedTtsRef.current = null;
+      }
       cancelListeningRef.current();
       if (audioRef.current) {
         audioRef.current.pause();

@@ -694,9 +694,11 @@ export default function CandidateReport({
                 {report.resumeAnalysis?.fitScore ?? 0}%
               </span>
             </div>
-            <p className="text-sm text-slate-300">
-              {report.resumeAnalysis?.justification}
-            </p>
+            {(report.resumeAnalysis?.justification?.trim() ?? '') && (
+              <p className="text-sm text-slate-300">
+                {report.resumeAnalysis.justification}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs font-medium text-green-400 mb-1.5">

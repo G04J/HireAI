@@ -2,7 +2,7 @@
 
 **AI-native recruitment and multi-stage interview platform**
 
-HireLens is a fully automated, AI-powered hiring ecosystem designed to transform the way candidates and recruiters connect. It removes the need for traditional resumes by intelligently building structured candidate personas from guided inputs and real-time conversations. Through dynamic, voice-based interviews with adaptive follow-up questions, the system evaluates not just skills, but clarity, confidence, and role alignment. Recruiters receive comprehensive performance reports, stage-wise breakdowns, and precise job-fit confidence scores instantly — eliminating hours of manual screening. HireLens creates a seamless, data-driven hiring journey that is faster, smarter, and built for the future of talent acquisition.
+HireLens is a fully automated, AI-powered hiring ecosystem designed to transform the way candidates and recruiters connect. It removes the need for traditional resumes by intelligently building structured candidate personas from guided inputs and real-time conversations. Through dynamic, voice-based interviews with adaptive follow-up questions, the system evaluates not just skills, but clarity, confidence, and role alignment. Recruiters receive comprehensive performance reports, stage-wise breakdowns, and precise job-fit confidence scores instantly, eliminating hours of manual screening. HireLens creates a seamless, data-driven hiring journey that is faster, smarter, and built for the future of talent acquisition.
 
 ## Features
 

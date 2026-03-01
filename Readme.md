@@ -1,4 +1,4 @@
-# Aegishre
+# HireLens
 
 **AI-native recruitment and multi-stage interview platform**
 

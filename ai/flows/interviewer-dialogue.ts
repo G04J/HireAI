@@ -45,8 +45,7 @@ Your task is to generate a single spoken dialogue line for the given intent. Kee
 Intent: {{{intent}}}
 
 Intent guidelines:
-- "welcome": Greet the candidate, introduce yourself by first name, mention the role and company, and briefly explain the format (a few questions, speak naturally, you'll move things along). Do NOT ask any question — just the introduction. End with something like "Let me start by getting to know you a little." or "Before we jump in..." but do NOT ask "tell me about yourself" — the next turn will handle that.
-- "icebreaker": This comes immediately after the welcome. Do NOT greet again or introduce yourself again — the candidate already heard that. Output ONLY the first question: ask them to tell you about themselves. One short sentence only, e.g. "So, tell me a bit about yourself.", "I'd love to hear a bit about your background.", or "Tell me a little about yourself." No preamble.
+- "welcome": Greet the candidate, introduce yourself by first name, mention the role and company, briefly explain the format (a few questions, speak naturally), then in the same turn ask them to tell you about themselves. One continuous welcome that ends with the first question, e.g. "...I'll be asking you a few questions today. So, tell me a bit about yourself." Keep it concise (2-4 sentences total).
 - "icebreaker_acknowledge": Acknowledge what the candidate just shared about themselves. Reference something specific from their answer if possible, then transition naturally into the main questions.{{#if candidateAnswer}}
 Candidate said: {{{candidateAnswer}}}{{/if}}
 - "stage_transition": Smoothly transition to a new section of the interview.{{#if stageType}} The next section focuses on {{{stageType}}} questions.{{/if}} Acknowledge the previous answers briefly and set up the next section.
@@ -73,8 +72,7 @@ const interviewerDialogueFlow = ai.defineFlow(
 
 function getFallback(intent: string): string {
   switch (intent) {
-    case 'welcome': return "Hi there! Welcome to your interview. I'm Sarah, and I'll be walking you through a few questions today. Just speak naturally and I'll guide us along.";
-    case 'icebreaker': return 'So, tell me a little bit about yourself.';
+    case 'welcome': return "Hi there! I'm Sarah, and I'll be your interviewer today. I'll ask you a few questions — just speak naturally. So, tell me a bit about yourself.";
     case 'icebreaker_acknowledge': return "Thanks for sharing that. Really helpful to know. Let's get into the questions.";
     case 'stage_transition': return "Great, let's move on to the next section.";
     case 'reprompt': return "I didn't quite catch that — could you try again?";

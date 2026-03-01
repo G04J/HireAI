@@ -17,6 +17,10 @@ const GenerateInterviewQuestionsInputSchema = z.object({
   stageFocusAreas: z
     .array(z.string())
     .describe('Key areas or topics the interview stage should focus on.'),
+  stageType: z
+    .string()
+    .optional()
+    .describe('The type of interview stage (e.g. behavioral, coding). Used to tailor question style.'),
   numQuestions: z
     .number()
     .int()
@@ -64,8 +68,15 @@ Interview Stage Focus Areas:
 {{#each stageFocusAreas}}
 - {{{this}}}
 {{/each}}
+{{#if stageType}}
+Stage Type: {{{stageType}}}
+{{/if}}
 
-Generate {{numQuestions}} interview questions. Each question should be relevant to the job description and focus areas, and you should assign a difficulty level (easy, medium, or hard) to each.
+If Stage Type is "behavioral": Generate ONLY experience-based, past-behaviour questions. Ask about real situations, how the candidate acted, and what they learned. Focus on soft skills and behaviours (e.g. teamwork, communication, conflict resolution, prioritisation, giving or receiving feedback, leadership, adaptability). Do NOT ask technical questions, tool-specific questions, coding questions, or definitions. Phrase questions so the candidate can answer with a concrete example from their past (STAR-style: Situation, Task, Action, Result). Use the job and focus areas only to choose the kinds of situations to ask about (e.g. teamwork in a delivery context), not for technical depth.
+
+Otherwise: Generate questions relevant to the job description and focus areas.
+
+Generate {{numQuestions}} questions and assign a difficulty level (easy, medium, or hard) to each.
 
 Format your output as a JSON object with a single key "questions" which is an array of objects. Each object in the array should have two keys: "question" (string) and "difficulty" (string, one of "easy", "medium", "hard").`,
 });

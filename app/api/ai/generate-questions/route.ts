@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { jobDescription, stageFocusAreas, numQuestions } = body;
+    const { jobDescription, stageFocusAreas, stageType, numQuestions } = body;
 
     if (!jobDescription || !stageFocusAreas) {
       return NextResponse.json({ error: 'jobDescription and stageFocusAreas are required' }, { status: 400 });
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     const result = await generateInterviewQuestions({
       jobDescription,
       stageFocusAreas,
+      stageType: stageType ?? undefined,
       numQuestions: numQuestions ?? 3,
     });
 

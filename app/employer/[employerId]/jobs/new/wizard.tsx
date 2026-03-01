@@ -110,6 +110,7 @@ export function NewJobWizard({ employerId }: { employerId: string | null }) {
       const result = await generateInterviewQuestions({
         jobDescription: jobData.description,
         stageFocusAreas: stages[index].focusAreas,
+        stageType: stages[index].type ?? undefined,
         numQuestions: 3,
       });
       updateStage(index, { questions: result.questions });

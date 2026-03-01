@@ -351,7 +351,7 @@ export default function InterviewPage({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ jobDescription: jobDesc, stageFocusAreas: areas, numQuestions: 4 }),
+        body: JSON.stringify({ jobDescription: jobDesc, stageFocusAreas: areas, stageType: stage.type ?? undefined, numQuestions: 4 }),
       });
       const d = await res.json();
       return d.questions ?? [];
@@ -465,18 +465,12 @@ export default function InterviewPage({
         let totalAnswered = 0;
         const allRecords: StageRecord[] = [];
 
-        /* ---- warm introduction (no question visible) ---- */
+        /* ---- welcome (intro + first question: tell me about yourself) ---- */
         const welcomeText = await dialogue('welcome', {}, job);
-        setQuestionText('');
+        await new Promise(r => setTimeout(r, 400));
+        setQuestionText(welcomeText);
         setPhase('ai_speaking');
         await speakText(welcomeText);
-        if (stale()) return;
-
-        /* ---- icebreaker: "tell me about yourself" ---- */
-        const icebreakerText = await dialogue('icebreaker', {}, job);
-        await new Promise(r => setTimeout(r, 600));
-        setQuestionText(icebreakerText);
-        await speakText(icebreakerText);
         if (stale()) return;
 
         setPhase('listening');
@@ -493,7 +487,7 @@ export default function InterviewPage({
         if (stale()) return;
 
         if (!iceBreakerTranscript.trim()) {
-          const repromptText = await dialogue('reprompt', { previousQuestion: icebreakerText }, job);
+          const repromptText = await dialogue('reprompt', { previousQuestion: welcomeText }, job);
           setPhase('ai_speaking');
           await speakText(repromptText);
           if (stale()) return;

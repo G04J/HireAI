@@ -14,7 +14,7 @@ export async function POST(
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const stageResults = body?.stageResults ?? [];
+    const clientStageResults = body?.stageResults ?? [];
     const candidateData = body?.candidateData ?? null;
     const resumeFitCheckResult = body?.resumeFitCheckResult ?? null;
 
@@ -47,6 +47,24 @@ export async function POST(
       .select('id, type, ai_usage_policy')
       .eq('job_profile_id', session.job_profile_id)
       .order('index', { ascending: true });
+
+    const stagesList = stages ?? [];
+    const stageResults: GenerateEvaluationReportInput['stageResults'] = clientStageResults.flatMap(
+      (clientStage: { stageType?: string; answers?: Array<{ question?: string; answer?: string; score?: number }> }, idx: number) => {
+        const stage = stagesList[idx];
+        const stageId = stage?.id ?? '';
+        const stageType = clientStage.stageType ?? stage?.type ?? '';
+        const aiAllowed = stage ? stage.ai_usage_policy !== 'not_allowed' : false;
+        const answers = Array.isArray(clientStage.answers) ? clientStage.answers : [];
+        return answers.map((a) => ({
+          stageId,
+          stageType,
+          question: a.question ?? '',
+          candidateAnswer: a.answer ?? '',
+          aiAllowed,
+        }));
+      }
+    );
 
     const jobProfile: GenerateEvaluationReportInput['jobProfile'] = {
       title: job?.title ?? 'Job',
